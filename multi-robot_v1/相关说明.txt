@@ -26,7 +26,8 @@ git checkout main
 Ps：如果你的主分支是main，请将上述的三个master改为main（反对黑人歧视的bullshit！！！）
 
 
-1、create a new repository on the command line
+1、create a new repository on the command line 
+这种情况是你从来都没有使用过git，当然这是不可能的
 echo "# robot416" >> README.md
 git init
 git add README.md
