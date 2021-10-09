@@ -7,6 +7,14 @@ Makefile使用前请将这句话先执行一遍，因为这个Ubuntu里有一个
 imwheel 
 用于加快鼠标滚轮速度，方便翻阅代码
 
+使用分支来对文件进行修改的流程：
+git checkout -b guozi
+[do your work]
+git add ~
+git commit ~
+git merge guozi
+git branch -D guozi
+
 如何清空commit提交记录，保持git干净清洁&&代码完整
 git checkout --orphan latest_branch
 git add -A
@@ -16,4 +24,21 @@ git branch -m master
 git push -f origin master
 git checkout main
 Ps：如果你的主分支是main，请将上述的三个master改为main（反对黑人歧视的bullshit！！！）
-有兴趣可以上网查查哈哈哈
+
+
+1、create a new repository on the command line
+echo "# robot416" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/guozi-1997/robot416.git
+git push -u origin main
+
+2、 push an existing repository from the command line
+git remote add origin https://github.com/guozi-1997/robot416.git
+git branch -M main
+git push -u origin main
+一般执行2就可以了，当你执行完之后，以后只需要：
+git push
+git pull
