@@ -42,3 +42,9 @@ git push -u origin main
 一般执行2就可以了，当你执行完之后，以后只需要：
 git push
 git pull
+
+
+错误解决方案：GnuTLS recv error (-110): The TLS connection was non-properly terminated.
+apt-get install gnutls-bin
+git config --global http.sslVerify false
+git config --global http.postBuffer 1048576000
