@@ -1,6 +1,5 @@
 
 //try to believe yourself
-
 #include <way.h>
 #include <show.h>
 #include "io.h"
