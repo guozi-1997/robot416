@@ -1,0 +1,5 @@
+export PATH=$PATH:/home/guozi/pkg/arm-2009q3/bin
+imwheel
+Makefile使用前请将这句话先执行一遍，因为这个Ubuntu里有一个比较新的交叉编译器。
+使用前要把这个旧的交叉编译器的路径放到环境变量里，如果想要永久使用，请更新/etc/profile文件
+imwheel 用于加快鼠标滚轮速度，方便翻阅代码
