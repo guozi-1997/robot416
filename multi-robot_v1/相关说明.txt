@@ -3,3 +3,13 @@ imwheel
 Makefile使用前请将这句话先执行一遍，因为这个Ubuntu里有一个比较新的交叉编译器。
 使用前要把这个旧的交叉编译器的路径放到环境变量里，如果想要永久使用，请更新/etc/profile文件
 imwheel 用于加快鼠标滚轮速度，方便翻阅代码
+
+如何清空commit提交记录，保持git干净清洁&&代码完整
+git checkout --orphan latest_branch
+git add -A
+git commit -am "commit message"
+git branch -D master
+git branch -m master
+git push -f origin master
+Ps：如果你的主分支是main，请将上述的三个master改为main（反对黑人歧视的bullshit！！！）
+有兴趣可以上网查查哈哈哈
