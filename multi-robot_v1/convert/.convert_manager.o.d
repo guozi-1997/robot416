@@ -1,5 +1,5 @@
 convert_manager.o: convert_manager.c \
- /home/guozi/Desktop/working/multi-robot_v1/include/config.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/config.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/stdio.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/features.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/predefs.h \
@@ -16,9 +16,9 @@ convert_manager.o: convert_manager.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stdio_lim.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/sys_errlist.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stdio.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/convert_manager.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/video_manager.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/pic_operation.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/convert_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/video_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/pic_operation.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/linux/videodev2.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/time.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/time.h \

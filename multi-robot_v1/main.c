@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 	DBG_PRINTF("y %d\n", tFrameBuf_main.tPixelDatas.iHeight); //600
 	//----------------------------
 
-	//pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
+	pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
 	/*所有关于卡尔曼滤波的线程都从上面这行开始，如果你想终止卡尔曼的所有程序，请将上一行屏蔽，这对主程序不会有影响*/
 	char *local_ip = NULL;
 	local_ip = GetLocalIp();
@@ -485,12 +485,13 @@ int main(int argc, char **argv)
 		}
 
 		//---------------显示屏显示----------------------
-		point_get(tInputEvent.x, tInputEvent.y, &tConvertBuf_now.tPixelDatas, &tFrameBuf_main.tPixelDatas);
+		//ps:point_get和show_some是显示屏部分函数，由于ide的问题，可能会导致段错误，故暂时屏蔽
+		//point_get(tInputEvent.x, tInputEvent.y, &tConvertBuf_now.tPixelDatas, &tFrameBuf_main.tPixelDatas);
 		min_cir(tConvertBuf_now.tPixelDatas.aucPixelDatas);
 
 		PicMerge(0, 0, &tConvertBuf_now.tPixelDatas, &tFrameBuf_main.tPixelDatas); //---x--y---图像经缩放整合到显示屏整个屏幕上
 
-		show_some(&tFrameBuf_main.tPixelDatas); //显示屏显示文字内容
+		//show_some(&tFrameBuf_main.tPixelDatas); //显示屏显示文字内容
 
 		FlushPixelDatasToDev(&tFrameBuf_main.tPixelDatas); //向整个屏幕绘画（即把图像拷贝到显存里）
 		//---------------保存处理好的图片-----------------
@@ -1093,8 +1094,8 @@ void *client_thread(void *arg)
 
 		iRecvLen = recv(p_net_rec->iSocketClient, mymsg_recv_, 100, 0);
 		memcpy(&mymsg_recv, mymsg_recv_, sizeof(mymsg_recv)); //把接收到的信息转换成结构体
-		printf("flag: %c\n", mymsg_recv.flag);
-		/* 		printf("local_ip: %s\n", mymsg_recv.local_ip);
+		/*printf("flag: %c\n", mymsg_recv.flag);
+		printf("local_ip: %s\n", mymsg_recv.local_ip);
 		printf("Ture_Tht: %d\n", mymsg_recv.Ture_Tht);
 		printf("dlta_d: %d\n", mymsg_recv.dlta_d);
 		printf("dlta_a: %d\n", mymsg_recv.dlta_a);
@@ -1124,7 +1125,6 @@ void *client_thread(void *arg)
 				case 1:
 					memcpy(&ekfRecvBuf[1], &mymsg_recv, sizeof(mymsg_recv));
 					//	assignment(ekfRecvBuf[1], robot_end[1].count, 1, local_ip);
-					printf("mymsg_recv = %d\n", mymsg_recv.Ture_Tht);
 					break;
 				case 4:
 					if (atoi(substr(local_ip, 12, 1)) == 1)
@@ -1150,19 +1150,10 @@ void *client_thread(void *arg)
 			{
 				if (mymsg_recv.flag == 'y')
 				{
-					printf("------------------------I get a order-------form %s------\n", substr(mymsg_recv.local_ip, 12, 1));
+					//printf("------------------------I get a order-------form %s------\n", substr(mymsg_recv.local_ip, 12, 1));
 					global.order_flag = 1;
 				}
 			}
-
-			//// if (ucRecvBuf[0] == 'y' || ucRecvBuf[0] == 'n')
-			//// {
-			//// 	if (ucRecvBuf[0] == 'y')
-			//// 	{
-			//// 		printf("------------------------I get a order-------form %c------\n", ucRecvBuf[13]);
-			//// 		global.order_flag = 1;
-			//// 	}
-			//// }
 			//-------------------------加入链表------------------------------------------
 		}
 	}
@@ -1518,8 +1509,8 @@ void *ekf_multi(void *arg)
 	//	{
 	//dlta_d = 100;
 	//dlta_a = 100;
-	pthread_t robotRun1;
-	pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
+	//pthread_t robotRun1;
+	//pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
 	//}
 	pthread_t robotRun;
 	pthread_create(&robotRun, NULL, robotRuning, NULL); //该线程用于记录

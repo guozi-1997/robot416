@@ -1,5 +1,5 @@
 v4l2.o: v4l2.c \
- /home/guozi/Desktop/working/multi-robot_v1/include/config.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/config.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/stdio.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/features.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/predefs.h \
@@ -16,8 +16,8 @@ v4l2.o: v4l2.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stdio_lim.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/sys_errlist.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stdio.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/video_manager.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/pic_operation.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/video_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/pic_operation.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/linux/videodev2.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/time.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/time.h \
@@ -44,7 +44,7 @@ v4l2.o: v4l2.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/signal.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/pthreadtypes.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/setjmp.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/disp_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/disp_manager.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/types.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/sysmacros.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/stat.h \

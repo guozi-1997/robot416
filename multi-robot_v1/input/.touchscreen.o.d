@@ -1,5 +1,5 @@
 touchscreen.o: touchscreen.c \
- /home/guozi/Desktop/working/multi-robot_v1/include/config.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/config.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/stdio.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/features.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/predefs.h \
@@ -16,7 +16,7 @@ touchscreen.o: touchscreen.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stdio_lim.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/sys_errlist.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stdio.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/input_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/input_manager.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/time.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/time.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/time.h \
@@ -32,4 +32,4 @@ touchscreen.o: touchscreen.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/pthreadtypes.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/alloca.h \
  /home/latelee/lib/tslib/include/tslib.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/draw.h
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/draw.h

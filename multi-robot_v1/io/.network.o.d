@@ -1,5 +1,5 @@
 network.o: network.c \
- /home/guozi/Desktop/working/multi-robot_v1/include/io.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/io.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/termios.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/features.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/predefs.h \
@@ -8,11 +8,11 @@ network.o: network.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/gnu/stubs.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/termios.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/ttydefaults.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/global.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/disp_manager.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/pic_operation.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/video_manager.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/config.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/global.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/disp_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/pic_operation.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/video_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/config.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/stdio.h \
  /home/guozi/pkg/arm-2009q3/bin/../lib/gcc/arm-none-linux-gnueabi/4.4.1/include/stddef.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/types.h \
@@ -50,7 +50,7 @@ network.o: network.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/signal.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/pthreadtypes.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/setjmp.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/convert_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/convert_manager.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/unistd.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/posix_opt.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/confname.h \
@@ -59,13 +59,13 @@ network.o: network.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/types.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/sysmacros.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/alloca.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/render.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/render.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/string.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/string.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/string2.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/stat.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/stat.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/MyMatrix.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/MyMatrix.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/fcntl.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/fcntl.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/sys/mman.h \
@@ -93,7 +93,7 @@ network.o: network.c \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/asm/sockios.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/linux/can.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/linux/socket.h \
- /home/guozi/Desktop/working/multi-robot_v1/include/input_manager.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/input_manager.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/netinet/in.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/stdint.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/wchar.h \

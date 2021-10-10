@@ -1,5 +1,5 @@
 merge.o: merge.c \
- /home/guozi/Desktop/working/multi-robot_v1/include/pic_operation.h \
+ /home/guozi/Desktop/working/git/multi-robot_v1/include/pic_operation.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/string.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/features.h \
  /home/guozi/pkg/arm-2009q3/bin/../arm-none-linux-gnueabi/libc/usr/include/bits/predefs.h \
