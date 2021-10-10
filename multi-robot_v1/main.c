@@ -1502,16 +1502,11 @@ void *ekf_multi(void *arg)
 	//dlta_a = 100;
 	char *local_ip = NULL;
 	local_ip = GetLocalIp();
-	sleep(20);
+	sleep(20); //延时20秒，目的是让所有的机器人全部准备好并进入局域网
 
-	//dlta_d = 0;
-	//if (atoi(substr(local_ip, 12, 1)) == 4)
-	//	{
-	//dlta_d = 100;
-	//dlta_a = 100;
 	//pthread_t robotRun1;
 	//pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
-	//}
+
 	pthread_t robotRun;
 	pthread_create(&robotRun, NULL, robotRuning, NULL); //该线程用于记录
 	if (robot_end[1].count == 1)
