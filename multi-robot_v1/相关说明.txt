@@ -44,7 +44,8 @@ git pull
 
 git remote add <远程主机名> https://github.com/guozi-1997/robot416.git
 git push <远程主机名> <本地分支名>:<远程分支名>
-git push origin master:djs
+git push origin main:main
+git push origin main:guozi
 # origin为设置的远程仓库别名, master为本地分支名, djs为远程分支名
 
 错误解决方案：GnuTLS recv error (-110): The TLS connection was non-properly terminated.
