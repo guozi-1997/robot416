@@ -1,0 +1,3 @@
+obj-y += myfile.o
+obj-y += matrix.o
+

@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"cmath": "c",
+			"*.tcc": "cpp",
+			"type_traits": "c",
+			"limits": "c",
+			"typeinfo": "c",
+			"io.h": "c",
+			"global.h": "c",
+			"random": "c",
+			"bitset": "c",
+			"chrono": "c",
+			"complex": "c",
+			"string": "c",
+			"string_view": "c",
+			"myfile.h": "c",
+			"mymatrix.h": "c"
+		}
+	}
+}
