@@ -52,3 +52,18 @@ git push origin main:guozi
 apt-get install gnutls-bin
 git config --global http.sslVerify false
 git config --global http.postBuffer 1048576000
+
+2021年10月10日20:46:47
+我们将point_get()和show_some()
+函数进行了屏蔽，这两个函数用于显示屏显示汉字，
+由于IDE的缘故出现了段错误。
+解决办法：将本程序使用gb2312格式显示即可。
+bug：使用2312会使程序的注释出现乱码，因此暂时屏蔽。期待师弟的解决！
+
+2021年10月10日21:47:48
+将陈阳师兄的路径规划和轨迹跟踪部分加入
+包括对way.c部分
+贝塞尔曲线等部分
+的修改
+
+PS:在头文件中的变量不要进行初始化！

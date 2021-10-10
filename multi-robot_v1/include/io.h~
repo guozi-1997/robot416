@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 
-//----得到ip 地址所需的头文件--------
+//----寰楀埌ip 鍦板潃鎵�闇�鐨勫ご鏂囦欢--------
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -61,7 +61,7 @@ struct receive_content
 
 typedef struct 
 {
-	int row,line;		//line为行,row为列
+	int row,line;		//line涓鸿,row涓哄垪
 	double *data;
 }Matrix;
 

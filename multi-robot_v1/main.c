@@ -8,8 +8,7 @@
 #include "MyMatrix.h"
 
 int ekf_ts = 1000000; //你可以通过ekf_ts决定滤波频率
-int dlta_d = 0;		  //线速度，如 dlta_d = 100 表示100mm/s 【控制机器人前进后退（正数前进，负数后退）】
-int dlta_a = 0;		  //角速度，如 dlta_a = 100 表示100rad/s【控制机器人左转右转（正数左转，负数右转）】
+
 struct _globals
 {
 	int order_flag; //令牌
@@ -60,13 +59,6 @@ char all_ip[7][14] = {"192.168.0.201",
 					  "192.168.0.205",
 					  "192.168.0.206",
 					  "192.168.0.207"};
-// float PMeter[7][14] = {{0},
-// 					   {0.0622, 1.3137, 1.4960, 0.2567, 0.2504, 1.8704, 0.0870, 0.1347, 2.6708, 0.0936, 0.0559, 3.7819, 0.0387, 0.0431, 4.7811},
-// 					   {0},
-// 					   {0},
-// 					   {0},
-// 					   {0},
-// 					   {0}};
 //pthread_mutex_t g_tLidar = PTHREAD_MUTEX_INITIALIZER; //此互斥锁用于雷达，现在已废弃（被 rwlock_lidar 代替）
 pthread_mutex_t g_tMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t g_tConVar = PTHREAD_COND_INITIALIZER;
@@ -76,15 +68,24 @@ static pthread_rwlock_t rwlock; //此读写锁用于变量dlta_d和dlta_a
 static pthread_rwlock_t rwlock_lidar; //此读写锁用于雷达
 T_VideoBuf tConvertBuf_now;
 T_VideoBuf tConvertBuf_mid;
+
+/* ******无线通信相关线程***** */
 void *socket_send(void *povid);
 void *socket_receive(void *povid);
+/****************************/
+
+/* 卡尔曼滤波相关线程 */
 void *ekf_algorithm(void *arg);
 void *ekf_multi(void *arg);
 void *ekf_algorithm2(void *arg);
 void *ekf_algorithm(void *arg);
+/*************************/
+
 /*Lidar数据处理相关线程*/
 void *Thread_Read(void *arg);
 void *Thread_Handle(void *arg);
+/*****************************/
+
 //----------------------
 void *VideoTreadFunction(void *povid)
 {
@@ -199,6 +200,310 @@ void *VideoTreadFunction(void *povid)
 //===
 //===
 //==========================================
+int can_fd;
+int file_fd;
+void ControlFun(void)
+{
+	//---path following values---采用标准单位-------//
+
+	static float w = 0.0; //路径参数
+	float w_der = 0.0;	  //路径参数导数
+	float error_s = 0.0;  //前向跟踪误差
+	float error_e = 0.0;  //横向跟踪误差
+	static float vc = 0.1;
+	float w_omiga = 0.0;
+
+	float x_p = 0.0, y_p = 0.0;				  //期望路径
+	float x_p_der = 0.0, y_p_der = 0.0;		  //期望路径一阶导
+	float x_p_derder = 0.0, y_p_derder = 0.0; //期望路径二阶导
+
+	float thta_p = 0.0; //thta_p PF2IF的旋转角度
+	float thta_p_der = 0.0;
+
+	float thta_e = 0.0;
+
+	float x_measure = 0.0, y_measure = 0.0; //机器人测量状态，由航位推算转换而来
+	float thta_measure = 0.0;
+
+	float ke = 0.3;			  //bezier ke=2;
+	float ks = 1.8, kw = 0.1; //参数选取满足1.44kw>=vc*ke
+	static float path_radiu = 0.5;
+
+	int path_follow_flag = 0;
+	int error_thta = 0;
+	float curve_radio = 0.0;
+	float a_rad_max = 0.8;
+	static int bezier_cnt = 0;
+	//----路径跟踪测试------//
+	//------将脉冲值转换为角速度、线速度标准值-----//
+	signal(SIGALRM, ControlFun);
+
+	timer_cnt++;
+
+	//======将航位推算结果转换成测量值======//
+	x_measure = -1.0 * (double)get_x / 1000.0;
+	y_measure = -1.0 * (double)get_y / 1000.0; //get_x、get_y单位mm/s，get_thta单位0.1°/s
+	thta_measure = (double)get_tht * 3.14159 / 1800.0;
+	//============================================//
+	/*if(w>1.0)
+	{
+		w=w-1.0; 
+		bezier_cnt=1;
+		printf("w=%f\n",w);
+	}*/
+	if (timer_cnt < 251 && w < 1.0)
+	//	if(timer_cnt<201 )
+	{
+
+		if (thta_measure < (-0.001))
+		{
+			thta_measure = -thta_measure;
+		}
+		else if (thta_measure > 0.001)
+		{
+			thta_measure = -thta_measure + 2 * 3.1415926;
+		}
+		else
+		{
+			thta_measure = thta_measure;
+		}
+
+		thta_measure = thta_measure + 1 * 3.1415926 / 2;
+
+		//***************以下算法实现部分**********************************//
+		//=====步骤1 :设定vc,计算期望路径一阶导，二阶导==//
+		//vc=0.1;				//v=vc=200mm/s
+
+		//**********圆轨迹**********************//
+		/*
+		x_p = path_radiu*cos(w) - path_radiu;
+		y_p = path_radiu*sin(w);
+
+		x_p_der = -path_radiu*sin(w);
+		y_p_der = path_radiu*cos(w);
+		
+		x_p_derder = -path_radiu*cos(w);
+		y_p_derder = -path_radiu*sin(w);
+		*/
+
+		//**********圆轨迹**********************//
+
+		//**********直线轨迹y=-x  第二象限**********************//
+		/*
+		x_p = -w;
+		y_p = w ;
+
+		x_p_der = -1;
+		y_p_der = 1;
+		
+		x_p_derder = 0;
+		y_p_derder = 0;
+		*/
+		//**********直线轨迹y=-x  第二象限**********************//
+
+		//*****注意:跟踪直线有方向区别*********//
+		//**********直线轨迹y = x  第一象限**********************//
+		/*
+		x_p = w;
+		y_p = w ;
+
+		x_p_der = 1;
+		y_p_der = 1;
+		
+		x_p_derder = 0;
+		y_p_derder = 0;
+		*/
+		//**********直线轨迹y = x  第一象限**********************//
+
+		//********** 对称三阶贝塞尔曲线轨迹**********************//
+		/*
+		x_p = 2*w*w*w-3*w*w;
+		y_p = 2*w*w*w-3*w*w+3*w;
+
+		x_p_der =6*w*w-6*w;
+		y_p_der =6*w*w-6*w+3;
+		
+		x_p_derder =12*w-6;
+		y_p_derder =12*w-6;
+		*/
+		//********** 优化三阶贝塞尔曲线轨迹**********************//
+
+		/*
+		x_p = 2*w*w*w-3*w*w;
+		y_p = -0.25*w*w*w+0.9*w*w+1.35*w;
+
+		x_p_der =6*w*w-6*w;
+		y_p_der =-0.75*w*w+1.8*w+1.35;
+		
+		x_p_derder =12*w-6;
+		y_p_derder =-1.5*w+1.8;	
+		*/
+
+		//*************连续不停车运动第一段********************************//
+		//	if(!bezier_cnt)
+		//{
+		x_p = 1.6 * w * w * w - 2.4 * w * w;
+		y_p = 1.8 * w * w * w - 2.7 * w * w + 2.7 * w;
+
+		x_p_der = 5.4 * w * w - 4.8 * w;
+		y_p_der = 5.4 * w * w - 5.4 * w + 2.7;
+
+		x_p_derder = 10.8 * w - 4.8;
+		y_p_derder = 10.8 * w - 5.4;
+		//}
+
+		//*************连续不停车运动第二段********************************//
+		//else
+		/*{
+			x_p = -2*w*w*w+3*w*w;
+			y_p = 0.3*w*w*w+0.3*w*w+1.2*w;
+
+			x_p_der =-6*w*w+6*w;
+			y_p_der =0.9*w*w+0.6*w+1.2;
+			
+			x_p_derder =-12*w+6;
+			y_p_derder =1.8*w+0.6;	
+		//}*/
+		//********计算不同路劲参数对应的曲率、规划速度========//
+		curve_radio = fabs((x_p_der * y_p_derder - y_p_der * x_p_derder) / (pow(x_p_der * x_p_der + y_p_der * y_p_der, 1.5)));
+		//vc=pow(a_rad_max/curve_radio,0.5);
+		vc = 0.1;
+		//printf("vc=%f\n",vc);
+		//file_write_xy(file_fd,timer_cnt , (int)(vc*1000));
+		if (vc > 0.4)
+			vc = 0.4;
+
+		//**********三阶贝塞尔曲线轨迹**********************//
+
+		//=====步骤2:求thta_p,前向、横向跟踪误差===//
+		thta_p = atan2(y_p_der, x_p_der);
+
+		if (thta_p < (-0.001))
+		{
+			thta_p = thta_p + 6.2832;
+		}
+		else
+		{
+			thta_p = thta_p;
+		}
+
+		error_s = (x_measure - x_p) * cos(thta_p) + (y_measure - y_p) * sin(thta_p);
+		error_e = -1 * (x_measure - x_p) * sin(thta_p) + (y_measure - y_p) * cos(thta_p);
+
+		thta_e = thta_measure - thta_p;
+
+		//*******贝塞尔曲线加的***************//
+
+		if (thta_e > 2 * 3.1415926 || thta_measure > 2 * 3.1415926)
+		{
+			thta_measure = thta_measure - 6.2832;
+		}
+
+		if (thta_e > 0.001)
+		{
+			thta_e = thta_e - 6.2832; //防止出现thta_p由360->0跳变时，thta_measure滞后，导致角速度跳变成不可控值而使系统不可控
+									  //*******贝塞尔曲线删除的***************//
+									  //thta_measure=thta_measure - 6.2832;
+		}
+
+		//=====步骤3:求w导数，thta_p导数,角速度dlta_a==//
+		w_der = (vc * cos(thta_e) + ks * error_s) / (sqrt(x_p_der * x_p_der + y_p_der * y_p_der));
+		thta_p_der = w_der * (y_p_derder * x_p_der - y_p_der * x_p_derder) / (x_p_der * x_p_der + y_p_der * y_p_der);
+		w_omiga = kw * (thta_p + atan2(-error_e, ke) - thta_measure) + thta_p_der + ke * (thta_p_der * error_s - vc * sin(thta_measure - thta_p)) / (error_e * error_e + ke * ke);
+
+		//=====步骤4:更新路径参数w===============//
+		w = w + w_der;
+
+		//***************以上算法实现部分**********************************//
+
+		//====系统平台中的一些说明======//
+		//===实际控制，线速度单位mm/s，角速度单位1/10°/s==//
+		//===dlta_d>0为前进，get_y<0,    dlta_d<0为后退，get_y>0    ======//
+		//===dlta_a>0时候左转get_x>0，get_thta由0->-1800->1800->0  ======//
+		//===dlta_a<0时候右转get_x<0，get_thta由0->1800->-1800->0  ======//
+
+		dlta_d = vc * 1000;
+		dlta_a = 10 * w_omiga * 57.296; //180/3.14;
+
+		if (dlta_a > 400)
+		{
+			dlta_a = 400;
+		}
+		if (dlta_a < -400)
+		{
+			dlta_a = -400;
+		}
+		file_write_xy(file_fd, (int)(w * 100), dlta_a);
+
+		printf("w_der=%f\n", w_der * 57.296);
+		printf("error_s=%f cm\n", error_s * 100);
+		printf("error_e=%f cm\n", error_e * 100);
+		printf("w=%f\n", w);
+		printf("dlta_a=%d\n", dlta_a);
+		printf("dlta_d=%d\n", dlta_d);
+		printf("x_measure=%f cm\n", x_measure * 100);
+		printf("y_measure=%f cm\n", y_measure * 100);
+		printf("thta_measure=%f \n", thta_measure * 57.296);
+		printf("thta_p=%f  \n", thta_p * 57.296);
+
+		//error_thta=(int)(atan2(-error_e,ke)*10000.0);
+		//error_thta=(int)(error_e*10000.0);
+		//printf("thta_error=%d \n",error_thta);
+		//file_write_xy(file_fd, (int)(w*100), (int)(error_e*1000));
+		//file_write_xy(file_fd, (int)(w*100), (int)(thta_e*573));
+		//file_write_xy(file_fd, -get_x, -get_y);
+		printf("\n");
+	}
+	else
+	{
+		dlta_d = 0;
+		dlta_a = 0;
+	}
+
+	//if(w<1.0){
+	frame_send.data[1] = (int)dlta_d >> 8;
+	frame_send.data[2] = (int)dlta_d;
+	frame_send.data[3] = (int)dlta_a >> 8;
+	frame_send.data[4] = (int)dlta_a;
+	frame_send.data[5] = 0;
+	nbytes = write(can_fd, &frame_send, sizeof(frame_send));
+
+	addr_len = sizeof(addr);
+	len = 0;
+
+	nbytes = recvfrom(s, &frame_rev, sizeof(struct can_frame), 0, (struct sockaddr *)&addr, &len);
+
+	ifr.ifr_ifindex = addr.can_ifindex;
+	ioctl(s, SIOCGIFNAME, &ifr);
+
+	get_y = (-1) * (short)(frame_rev.data[0] * 256 + frame_rev.data[1]); //代表y偏移量前进为-
+	get_x = (-1) * (short)(frame_rev.data[2] * 256 + frame_rev.data[3]); //代表x偏移量,左为正
+	get_tht = (short)(frame_rev.data[4] * 256 + frame_rev.data[5]);		 //右转为正
+																		 //}
+																		 /*
+	else
+	{
+		frame_send.data[1]=(int)dlta_d>>8;
+		frame_send.data[2]=(int)dlta_d;
+		frame_send.data[3]=(int)dlta_a>>8;
+		frame_send.data[4]=(int)dlta_a;
+		frame_send.data[5]=1;
+		nbytes =write(can_fd,&frame_send,sizeof(frame_send));	
+
+		addr_len=sizeof(addr);
+		len=0;
+
+		nbytes = recvfrom(s,&frame_rev,sizeof(struct can_frame),0,(struct sockaddr *)&addr,&len);
+
+		ifr.ifr_ifindex = addr.can_ifindex;
+		ioctl(s,SIOCGIFNAME,&ifr);
+
+		get_y=(-1)*(short)(frame_rev.data[0]*256+frame_rev.data[1]);	 //代表y偏移量前进为-
+		get_x=(-1)*(short)(frame_rev.data[2]*256+frame_rev.data[3]);	//代表x偏移量,左为正
+		get_tht=(short)(frame_rev.data[4]*256+frame_rev.data[5]);		//右转为正	
+	}
+	*/
+}
 int main(int argc, char **argv)
 {
 	struct timeval tv1;
@@ -208,15 +513,12 @@ int main(int argc, char **argv)
 	int count = 0;
 	int differ = 0;
 	int counter = 0;
-	int get_x;
-	int get_y;
-	int get_tht;
 	int res;
 	float dis_50;
 	//-----------io---------------
 	int usart_fd = 0;
-	int can_fd = 0;
-
+	//int can_fd=0;
+	//int file_fd=0;
 	unsigned char get_data[8];
 	int read_num = 0;
 	float sin_count = 0.001;
@@ -232,26 +534,26 @@ int main(int argc, char **argv)
 	pthread_t tTreadID3;
 	pthread_t tTreadID4;
 	//------------lidar-----------------//
-	////pthread_t thrd_id1, thrd_id2;
-	////pthread_attr_t attr; //设置thrd_id1线程的属性
-	////struct sched_param param;
+	//pthread_t thrd_id1, thrd_id2;
+	//pthread_attr_t attr; //设置thrd_id1线程的属性
+	//struct sched_param param;
 
-	//// res = pthread_attr_init(&attr);
-	//// if (res != 0)
-	//// {
-	//// 	printf("Create attr failed!\n");
-	//// 	exit(res);
-	//// }
+	// res = pthread_attr_init(&attr);
+	// if (res != 0)
+	// {
+	// 	printf("Create attr failed!\n");
+	// 	exit(res);
+	// }
 
-	////pthread_attr_setschedpolicy(&attr, SCHED_RR); //设置线程的调度策略，SCHED_RR是设置一个时间片
+	//pthread_attr_setschedpolicy(&attr, SCHED_RR); //设置线程的调度策略，SCHED_RR是设置一个时间片
 
-	////param.sched_priority = 99;
-	////res = pthread_attr_setschedparam(&attr, &param); //设置线程的调度参数,优先级设为99
-	////if (res != 0)
-	////{
-	////	printf("Setting attr failed!\n");
-	////	exit(res);
-	////}
+	//param.sched_priority = 99;
+	//res = pthread_attr_setschedparam(&attr, &param); //设置线程的调度参数,优先级设为99
+	//if (res != 0)
+	//{
+	//	printf("Setting attr failed!\n");
+	//	exit(res);
+	//}
 	//------------lidar-----------------//
 
 	signal(SIGPIPE, SIG_IGN);					//客户端半关闭，服务器端返回消息的时候就会收到内核给的SIGPIPE信号，忽略它
@@ -262,19 +564,19 @@ int main(int argc, char **argv)
 	pthread_rwlock_init(&rwlock_lidar, NULL);	//初始化雷达的读写锁
 	global.order_flag = 0;
 	/* 创建子线程 */
-	////res = pthread_create(&thrd_id1, &attr, Thread_Read, NULL); //------------lidar-----------------//
-	////if (res != 0)
-	////{
-	////	printf("Create thread failed!");
-	////	exit(res);
-	////}
+	//res = pthread_create(&thrd_id1, &attr, Thread_Read, NULL); //------------lidar-----------------//
+	//if (res != 0)
+	//{
+	//	printf("Create thread failed!");
+	//	exit(res);
+	//}
 
-	////res = pthread_create(&thrd_id2, NULL, Thread_Handle, NULL); //------------lidar-----------------//
-	////if (res != 0)
-	////{
-	////	printf("Create thread failed!");
-	////	exit(res);
-	////}
+	//res = pthread_create(&thrd_id2, NULL, Thread_Handle, NULL); //------------lidar-----------------//
+	//if (res != 0)
+	//{
+	//	printf("Create thread failed!");
+	//	exit(res);
+	//}
 
 	pthread_create(&tTreadID3, NULL, socket_receive, NULL); //创建服务器（监听）线程
 	pthread_create(&tTreadID2, NULL, socket_send, NULL);	//创建客户端线程
@@ -1242,12 +1544,12 @@ void *socket_receive(void *povid)
 */
 void *ekf_algorithm(void *arg)
 {
-	int file_fd = 0;
+	//int file_fd = 0;
 	int a = *(int *)arg;
 	int k = 0;
 	InitEkf(a);
 	char *local_ip = NULL;
-	file_fd = file_init(); //打开记录文件 ./record/x.txt
+	//file_fd = file_init(); //打开记录文件 ./record/x.txt
 	local_ip = GetLocalIp();
 	//init_sigaction();
 	//init_time();
@@ -1443,7 +1745,6 @@ int robotRuning()
 	int a = 0;
 	seconds_sleep(2);
 	int file_fd = 0;
-	file_fd = file_init();
 	while (1)
 	{
 		for (a = 1; a < 3; a++)

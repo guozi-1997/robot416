@@ -43,16 +43,9 @@ struct ifreq ifr;
 struct can_frame frame_send;
 
 //--------get_can-----------
-struct can_frame frame_rev;   //接收CAN报文
+struct can_frame frame_rev; //接收CAN报文
 int addr_len;
 socklen_t len;
-
-int get_x;
-int get_y;
-int get_tht;
-
-int dlta_d;
-int dlta_a;
 
 //----------------------------usart---------------------------------------
 unsigned char ask_data[5];
@@ -61,13 +54,13 @@ unsigned char get_data[8];
 //-------------------------network-------------------------------
 struct receive_content
 {
-   int iSocketClient[10];  //（本机作为客户端）存客户端socket连接描述符
-   int connet_flag[10];    //（本机作为客户端）存是否与服务器成功连接标志位
+   int iSocketClient[10]; //（本机作为客户端）存客户端socket连接描述符
+   int connet_flag[10];   //（本机作为客户端）存是否与服务器成功连接标志位
    int start_connect_flag[10];
    int connect_fd[10];
 } rec_content;
 
-struct sockaddr_in tSocketServerAddr;  //本机作为客户端时，存放欲连接服务器的地址结构
+struct sockaddr_in tSocketServerAddr; //本机作为客户端时，存放欲连接服务器的地址结构
 int set_lidaropt(int fd, int nSpeed, int nBits, char nEvent, int nStop);
 //------------------------------------------------------------
 #endif /* _IO_H */

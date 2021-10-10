@@ -43,6 +43,21 @@
 
 //#define cir_x  370
 //#define cir_y  300
+
+
+#define ROBOT_WIDTH	40    //单位厘米
+
+#define  delta_l      		20	//步长设置为20cm
+
+#define ROLLWINDOW_R	1000.0
+
+#define	 TrackNodeNum	20
+int dlta_d ;		  //线速度，如 dlta_d = 100 表示100mm/s 【控制机器人前进后退（正数前进，负数后退）】
+int dlta_a ;		  //角速度，如 dlta_a = 100 表示100rad/s【控制机器人左转右转（正数左转，负数右转）】
+
+int get_x;
+int get_y;
+int get_tht;
 int cir_x;
 int cir_y;
 #define cell(x, y, d) (4 * (x)-3200 * (y) + cir_x * 4 + 3200 * cir_y + d)
@@ -159,6 +174,109 @@ int CurLidarDistPix[1024];
 int CurLidarAng[1024];		//lidar每个采样点的角度值
 int CurLidarDistance[1024]; //lidar每个采样点的距离值
 
+int TrueAimCount;
+int TrueCurLidarAng[2000];
+int TrueCurLidarDistPix[2000];	//�����ڻ���ͼ��
+
+int TrueAimCntDis;
+int TrueCurLidarAngle[2000];
+int TrueCurLidarDistance[2000];
+
+int FilterCount;
+int FilterCount2;
+int FilterLidarAng[2000];
+int FilterLidarDistPix[2000];
+int FilterLidarAng2[2000];
+int FilterLidarDistance[2000];
+
+int LidarEdgeCnt;
+int LidarEdgeDistPix[1024];
+int LidarEdgeAngle[1024];
+int LidarEdgeDistance[1024];
+
+int OkPathCnt;
+int OkPathDistPix[10];
+int OkPathAngle[10];
+int OkPathDistance[10];
+
+int LidarOkPathMidCnt;
+int LidarOkPathMidAng[10];
+int LidarOkPathMidPix[10];
+int LidarOkPathMidDistance[10];
+
+int PicEdgePixCnt;
+int PicEdgePix[1024];
+int PicEdgeAngle[1024];
+
+int PathPlanningCnt;
+int NumPathPlanningCnt;
+int PathPlanningAng[5][100][5];
+int PathPlanningPix[5][100][5];
+int PathPlanningDistance[10][5];
+
+int RRTPlanningCnt;
+int RRTPlanningAng[256];
+int RRTPlanningPix[256];
+
+float PathWidth;
+
+int isOkPath;
+int SafeFlag;
+int RandRito;
+int ROLLWINDOW_RITO;
+
+int HaveDoubleObsPath;
+
+int startflag;
+
+int fd_rand;
+
+int Next_UnSafe_Flag;
+
+//int Layer;
+int RRT_Ok_Flag;
+int Arrived_ChildAim_Flag;
+int isArrivedDirect_Flag;
+int SrandNum[5];
+
+int Lidar_Circle_Cnt;
+int Lidar_PerCircle_Ok_Flag;
+
+int Safe_Dis_Sub;
+int Track_Flag;
+
+int timer_cnt;
+
+typedef struct Cordinate_PerLayer
+{
+	int Layer;
+	int Cordinate_X[10][256];
+	int Cordinate_Y[10][256];
+	int Cordinate_Ang[10][256];
+}T_CorPerLayer;
+
+T_CorPerLayer   Cord_PerLayer;
+
+typedef struct Ok_PathPlanning_Point
+{
+	int Layer_Num;
+	int Ok_Angle[1024];
+	int Ok_Pix[1024];
+	int Ok_Distance[1024];
+	int Ok_Cnt_PerLayer;
+	int Ok_PerLayer_Angle[1024][4];
+}T_OkPath;
+
+typedef struct Best_OkPath_Point
+{
+	int Best_Layer_Num;
+	int Best_Ok_Angle[10];
+	int Best_Ok_Pix[10];
+	int Best_Ok_Distance[10];
+	int Best_Ok_PerLayer_Ang[10][4];
+	int Best_Ok_Cnt;
+}T_Best_OkPath;
+
 struct timer
 {
 	double PreMs;
@@ -167,11 +285,21 @@ struct timer
 	int time_flag;
 } get_time, ekf_gettime, ekf_gettime2;
 
+
+
 /* 将 客户端地址结构 和 服务器连接套接字描述符 绑定在一起，一一对应 */
 typedef struct net_receive
 {
 	int iSocketClient; //服务器连接套接字描述符
-
 	unsigned char *ip; //客户端地址结构IP
 } t_net_rec, *pt_net_rec;
+
+ typedef struct
+{	
+	int x;
+	int y;
+} Point2D; 
+
+Point2D	no_control_point[2],one_control_point[3],double_control_points[4];
+Point2D	no_control_r[TrackNodeNum],one_control_r[TrackNodeNum],double_control_r[TrackNodeNum];
 #endif /* _gloable_H */
