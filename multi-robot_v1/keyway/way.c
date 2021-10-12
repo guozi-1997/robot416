@@ -4,13 +4,13 @@
 #define min(a, b) ((a > b) ? (b) : (a))
 #define max(a, b) ((a > b) ? (a) : (b))
 
-#define branch_num 3     //搜索树分支数
-#define Layer 4          //静态搜索树层数为定值
-#define ObsDeltaAng 150  //障碍物与搜索路径角度差阈值
-#define ExpandDis 200    //膨胀距离mm
-#define Step 40          //步长,单位pix
-#define StepDistance 300 //步长，单位mm
-#define Display_Flag 1   //0显示所有搜索路径，1显示规划后的可行路径
+#define branch_num 3     //鎼滅储鏍戝垎鏀暟
+#define Layer 4          //闈欐€佹悳绱㈡爲灞傛暟涓哄畾鍊�
+#define ObsDeltaAng 150  //闅滅鐗╀笌鎼滅储璺緞瑙掑害宸槇鍊�
+#define ExpandDis 200    //鑶ㄨ儉璺濈mm
+#define Step 40          //姝ラ暱,鍗曚綅pix
+#define StepDistance 300 //姝ラ暱锛屽崟浣峬m
+#define Display_Flag 1   //0鏄剧ず鎵€鏈夋悳绱㈣矾寰勶紝1鏄剧ず瑙勫垝鍚庣殑鍙璺緞
 #define SafeDistance 400
 
 int randangle[6][100][10] = {0};
@@ -21,8 +21,8 @@ int planning_cnt = 0;
 RandRito = 1;
 int time_srand = 0;
 int release_num[10] = {0};
-int Node_PerNum = 1; //所在层的节点数
-int Circle_num = 0;  //产生随机数的循环次数
+int Node_PerNum = 1; //鎵€鍦ㄥ眰鐨勮妭鐐规暟
+int Circle_num = 0;  //浜х敓闅忔満鏁扮殑寰幆娆℃暟
 
 int obs_search_cnt = 0;
 
@@ -99,29 +99,29 @@ void ComputeOneBezier(Point2D *cp, int numberOfPoints, Point2D *curve)
         curve[i] = PointOnBezierOneControl(cp, i * dt);
 }
 
-//two control points �������Ƶ�
+//two control points 涓や釜鎺у埗鐐�
 Point2D PointOnCubicBezier(Point2D *cp, float t)
 {
     float ax, bx, cx;
     float ay, by, cy;
     float tSquared, tCubed;
     Point2D result;
-    /* 计算多项式系数 */
+    /* 鐠侊紕鐣绘径姘躲€嶅蹇曢兇閺侊拷 */
     cx = 3.0 * (cp[1].x - cp[0].x);
     bx = 3.0 * (cp[2].x - cp[1].x) - cx;
     ax = cp[3].x - cp[0].x - cx - bx;
     cy = 3.0 * (cp[1].y - cp[0].y);
     by = 3.0 * (cp[2].y - cp[1].y) - cy;
     ay = cp[3].y - cp[0].y - cy - by;
-    /* 计算t位置的点值 */
+    /* 鐠侊紕鐣籺娴ｅ秶鐤嗛惃鍕仯閸婏拷 */
     tSquared = t * t;
     tCubed = tSquared * t;
     result.x = (ax * tCubed) + (bx * tSquared) + (cx * t) + cp[0].x;
     result.y = (ay * tCubed) + (by * tSquared) + (cy * t) + cp[0].y;
     return result;
 }
-/* ComputeBezier 以控制点 cp 所产生的曲线点，填入 Point2D 结构数组。 
-调用方必须分配足够的空间以供输出，<sizeof(Point2D) numberOfPoints> */
+/* ComputeBezier 娴犮儲甯堕崚鍓佸仯 cp 閹碘偓娴溠呮晸閻ㄥ嫭娲哥痪璺ㄥ仯閿涘苯锝為崗锟� Point2D 缂佹挻鐎弫鎵矋閵嗭拷 
+鐠嬪啰鏁ら弬鐟扮箑妞よ鍨庨柊宥堝喕婢剁喓娈戠粚娲？娴犮儰绶垫潏鎾冲毉閿涳拷<sizeof(Point2D) numberOfPoints> */
 void ComputeDoubleBezier(Point2D *cp, int numberOfPoints, Point2D *curve)
 {
     float dt;
@@ -199,7 +199,7 @@ int rgb(unsigned char *addr, int y, int x)
     }
 
     //=======================================================================
-    if (DAY == 2) //暂定采用该方式判断扫描的是不是黄色
+    if (DAY == 2) //鏆傚畾閲囩敤璇ユ柟寮忓垽鏂壂鎻忕殑鏄笉鏄粍鑹�
     {
         //----------------------------------------------------------------------------
         if (addr[cell(x, y, 2)] > addr[cell(x, y, 1)] + 40 &&
@@ -221,7 +221,7 @@ int rgb(unsigned char *addr, int y, int x)
         }
         //----------------------------------------------------------------------------
         if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 30 &&
-            addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 30 && addr[cell(x, y, 2)] >= 115) //yellow	0 1 2 分别bgr
+            addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 30 && addr[cell(x, y, 2)] >= 115) //yellow	0 1 2 鍒嗗埆bgr
         {
             return 4;
         }
@@ -232,7 +232,7 @@ int rgb(unsigned char *addr, int y, int x)
             return 5;
         }
 
-        //---------------------添加的--------------------------
+        //---------------------娣诲姞鐨�--------------------------
         if (addr[cell(x, y, 0)] - addr[cell(x - 1, y, 0)] > 20 || addr[cell(x, y, 1)] - addr[cell(x - 1, y, 1)] > 20 || addr[cell(x, y, 2)] - addr[cell(x - 1, y, 2)] > 20)
         {
             return 6;
@@ -318,7 +318,7 @@ void min_cir(unsigned char *addr)
     float theta = 0.0;
     float tmp_rollwindow_r = 0.0;
 
-    //--------------------画直角坐标系-------------------------------
+    //--------------------鐢荤洿瑙掑潗鏍囩郴-------------------------------
     x = 0;
     for (y = -275; y < 275; y++)
     {
@@ -335,8 +335,8 @@ void min_cir(unsigned char *addr)
         addr[cell(x, y, 2)] = 255;
     }
 
-    //----------判断lidar采集到的障碍物点是否属实(滤波)-------
-    //-------运行到子目标点过程中检测正前方是否有障碍--------
+    //----------鍒ゆ柇lidar閲囬泦鍒扮殑闅滅鐗╃偣鏄惁灞炲疄(婊ゆ尝)-------
+    //-------杩愯鍒板瓙鐩爣鐐硅繃绋嬩腑妫€娴嬫鍓嶆柟鏄惁鏈夐殰纰�--------
 
     if (AimCount > 0)
     {
@@ -345,7 +345,7 @@ void min_cir(unsigned char *addr)
         {
             if (abs((3600 + 900 - CurLidarAng[i]) % 3600 - 900) < 10 && CurLidarDistance[i] < (SafeDistance - Safe_Dis_Sub) && CurLidarDistance[i] != 258)
             {
-                Next_UnSafe_Flag = 1; //不安全
+                Next_UnSafe_Flag = 1; //涓嶅畨鍏�
                 printf("CurLidarAng=%d\n", (3600 + 900 - CurLidarAng[i]) % 3600);
                 printf("CurLidarDistance=%d\n", CurLidarDistance[i]);
                 printf("\n");
@@ -401,9 +401,9 @@ void min_cir(unsigned char *addr)
         //	printf("TrueAimCntDis=%d,TrueAimCount=%d\n",TrueAimCntDis,TrueAimCount);
         //	printf("\n");
 
-        //--------------------滤波后的lidar障碍物显示-----------------------------------
+        //--------------------婊ゆ尝鍚庣殑lidar闅滅鐗╂樉绀�-----------------------------------
 
-        //-----雷达坐标转换到图像坐标-------
+        //-----闆疯揪鍧愭爣杞崲鍒板浘鍍忓潗鏍�-------
         for (i = 0; i < TrueAimCount; i++)
         {
             TrueCurLidarAng[i] = (3600 + 900 - TrueCurLidarAng[i]) % 3600;
@@ -414,9 +414,9 @@ void min_cir(unsigned char *addr)
             TrueCurLidarAngle[i] = (3600 + 900 - TrueCurLidarAngle[i]) % 3600;
         }
 
-        //--------------冒泡法排序------------------------------------------
-        //----------将扫描到的障碍物转化到机器人显示坐标下--
-        //----------按照角度递增排序(机器人头朝向90度)------------
+        //--------------鍐掓场娉曟帓搴�------------------------------------------
+        //----------灏嗘壂鎻忓埌鐨勯殰纰嶇墿杞寲鍒版満鍣ㄤ汉鏄剧ず鍧愭爣涓�--
+        //----------鎸夌収瑙掑害閫掑鎺掑簭(鏈哄櫒浜哄ご鏈濆悜90搴�)------------
         int tmpangle = 0;
         int tmppix = 0;
         int tmpdis = 0;
@@ -454,7 +454,7 @@ void min_cir(unsigned char *addr)
             }
         }
 
-        //-------将采集到的障碍物数据滤波，去除重复数据----
+        //-------灏嗛噰闆嗗埌鐨勯殰纰嶇墿鏁版嵁婊ゆ尝锛屽幓闄ら噸澶嶆暟鎹�----
 
         for (i = 0; i < TrueAimCount - 1; i++)
         {
@@ -479,7 +479,7 @@ void min_cir(unsigned char *addr)
         //printf("FilterCount=%d,FilterCount2=%d\n",FilterCount,FilterCount2);
         //printf("\n");
 
-        //----提取距离机器人最近的障碍物距离和角度----------
+        //----鎻愬彇璺濈鏈哄櫒浜烘渶杩戠殑闅滅鐗╄窛绂诲拰瑙掑害----------
 
         if (!tmpminangle_f)
         {
@@ -518,7 +518,7 @@ void min_cir(unsigned char *addr)
         //	printf("tmpmaxpix=%d\n",tmpmaxpix);
         //	printf("\n");
 
-        //----------显示按图像坐标排序后的障碍物-----------------
+        //----------鏄剧ず鎸夊浘鍍忓潗鏍囨帓搴忓悗鐨勯殰纰嶇墿-----------------
 
         for (i = 0; i < FilterCount; i++)
         {
@@ -545,10 +545,10 @@ void min_cir(unsigned char *addr)
 
         //------------------------------------------------------------------------
 
-        //-------判断机器人到总目标的直线路径上有无障碍物---
+        //-------鍒ゆ柇鏈哄櫒浜哄埌鎬荤洰鏍囩殑鐩寸嚎璺緞涓婃湁鏃犻殰纰嶇墿---
 
         //*********************************************************************//
-        //--------------改进的RRT算法实现加入滚动窗口----------//
+        //--------------鏀硅繘鐨凴RT绠楁硶瀹炵幇鍔犲叆婊氬姩绐楀彛----------//
         //*********************************************************************//
 
         if (!isArrivedDirect_Flag)
@@ -560,9 +560,9 @@ void min_cir(unsigned char *addr)
         }
         //printf("HaveNoObs=%d\n",HaveNoObs);
 
-        //---直接跑向目标的条件:
-        //----1.窗口区域内无障碍物2.窗口内有障碍，
-        //--------且障碍物分布不在机器人与目标连线的安全通道内---
+        //---鐩存帴璺戝悜鐩爣鐨勬潯浠�:
+        //----1.绐楀彛鍖哄煙鍐呮棤闅滅鐗�2.绐楀彛鍐呮湁闅滅锛�
+        //--------涓旈殰纰嶇墿鍒嗗竷涓嶅湪鏈哄櫒浜轰笌鐩爣杩炵嚎鐨勫畨鍏ㄩ€氶亾鍐�---
         if (HaveNoObs && (!isArrivedDirect_Flag))
         {
             SrandNum[0] = robot_temp[1].angle;
@@ -599,7 +599,7 @@ void min_cir(unsigned char *addr)
             addr[cell(x, y, 2)] = 255;
         }
 
-        //--HaveNoObs=1表示无障碍----
+        //--HaveNoObs=1琛ㄧず鏃犻殰纰�----
 
         int tmp_pow = 0;
         int tmp_dis = 0;
@@ -612,10 +612,10 @@ void min_cir(unsigned char *addr)
                 calibrate_cnt = 0;
                 for (i = 0; i < 5; i++)
                 {
-                    fd_rand = open("/dev/urandom", O_RDONLY); //  /dev/urandom设备可实现随机数产生
+                    fd_rand = open("/dev/urandom", O_RDONLY); //  /dev/urandom璁惧鍙疄鐜伴殢鏈烘暟浜х敓
 
-                    read(fd_rand, SrandNum + i, sizeof(int));    //二维数组a[i]表示 第i行首地址
-                    SrandNum[i] = abs(SrandNum[i]) % 1600 + 100; //10-170度搜索
+                    read(fd_rand, SrandNum + i, sizeof(int));    //浜岀淮鏁扮粍a[i]琛ㄧず 绗琲琛岄鍦板潃
+                    SrandNum[i] = abs(SrandNum[i]) % 1600 + 100; //10-170搴︽悳绱�
 
                     RandRito = RandRito * 2;
                     isOkPath = 1;
@@ -623,12 +623,12 @@ void min_cir(unsigned char *addr)
                 }
             }
 
-            //--- 用于两侧障碍物存在时选取通道-------
+            //--- 鐢ㄤ簬涓や晶闅滅鐗╁瓨鍦ㄦ椂閫夊彇閫氶亾-------
             for (i = 0; i < FilterCount2 - 1; i++)
             {
                 tmp_pow = pow((FilterLidarDistance[i] * FilterLidarDistance[i] + FilterLidarDistance[i + 1] * FilterLidarDistance[i + 1] - 2 * FilterLidarDistance[i] * FilterLidarDistance[i + 1] * cos((FilterLidarAng2[i] - FilterLidarAng2[i + 1]) * 3.14 / 1800)), 0.5);
 
-                //------存在两侧障碍物之间的间隔容许机器人通过---------
+                //------瀛樺湪涓や晶闅滅鐗╀箣闂寸殑闂撮殧瀹硅鏈哄櫒浜洪€氳繃---------
                 if ((abs(FilterLidarAng2[i] - FilterLidarAng2[i + 1]) > 200) && tmp_pow > 400)
                 {
                     Reach_Path.Reach_Angle[Reach_Path.Reach_Cnt] = FilterLidarAng2[i];
@@ -644,8 +644,8 @@ void min_cir(unsigned char *addr)
                 }
             }
 
-            //--判断最小角度设置初始值------
-            //------记录角度取最值时候对应的障碍物距离----
+            //--鍒ゆ柇鏈€灏忚搴﹁缃垵濮嬪€�------
+            //------璁板綍瑙掑害鍙栨渶鍊兼椂鍊欏搴旂殑闅滅鐗╄窛绂�----
 
             if (!tmp_minangle)
             {
@@ -695,7 +695,7 @@ void min_cir(unsigned char *addr)
 
                 tmp_mindis = min(tmp_mindis, FilterLidarDistance[i]);
             }
-            //----获取最值角度对应的距离-----
+            //----鑾峰彇鏈€鍊艰搴﹀搴旂殑璺濈-----
             for (i = 0; i < FilterCount2; i++)
             {
                 if (tmp_minangle == FilterLidarAng2[i])
@@ -714,11 +714,11 @@ void min_cir(unsigned char *addr)
             //	printf("tmp_maxangle_dis=%d\n",tmp_maxangle_dis);
             //	printf("\n");
 
-            //-----单侧障碍物分为障碍物覆盖--------
-            //---视角大于150°和小于150°的情况----
+            //-----鍗曚晶闅滅鐗╁垎涓洪殰纰嶇墿瑕嗙洊--------
+            //---瑙嗚澶т簬150掳鍜屽皬浜�150掳鐨勬儏鍐�----
             if (tmp_maxrad < 200)
             {
-                HaveDoubleObsPath = 2; //=2表示单侧障碍
+                HaveDoubleObsPath = 2; //=2琛ㄧず鍗曚晶闅滅
                 SigleObs_MaxAngle = tmp_maxangle;
                 SigleObs_MinAngle = tmp_minangle;
                 SigleObs_MinDis = tmp_mindis;
@@ -727,15 +727,15 @@ void min_cir(unsigned char *addr)
 
                 if (2 == HaveDoubleObsPath)
                 {
-                    if (tmp_maxangle - tmp_minangle > 1500) //表示连续单侧障碍视角覆盖过大
+                    if (tmp_maxangle - tmp_minangle > 1500) //琛ㄧず杩炵画鍗曚晶闅滅瑙嗚瑕嗙洊杩囧ぇ
                     {
-                        HaveDoubleObsPath = 3; //特殊环境
+                        HaveDoubleObsPath = 3; //鐗规畩鐜
                     }
                 }
             }
             else
             {
-                HaveDoubleObsPath = 1; //=1表示有两侧障碍
+                HaveDoubleObsPath = 1; //=1琛ㄧず鏈変袱渚ч殰纰�
                 SigleObs_MaxAngle = 0;
                 SigleObs_MinAngle = 0;
                 SigleObs_MinDis = 0;
@@ -753,7 +753,7 @@ void min_cir(unsigned char *addr)
             //	printf("SigleObs_MinAngle=%d\n",SigleObs_MinAngle);
             //	printf("\n");
 
-            //----判断筛选出来的无障碍区间是否合理--------------//
+            //----鍒ゆ柇绛涢€夊嚭鏉ョ殑鏃犻殰纰嶅尯闂存槸鍚﹀悎鐞�--------------//
             /*	if(Reach_Path.Reach_Cnt)
 		{			
 			for(i=0;i<Reach_Path.Reach_Cnt-1;i=i+2)
@@ -768,7 +768,7 @@ void min_cir(unsigned char *addr)
 				}
 			}
 		}
-		//----判断满一定圈数，减小误差-------
+		//----鍒ゆ柇婊′竴瀹氬湀鏁帮紝鍑忓皬璇樊-------
 		if(Reach_Path.Reach_Cnt )
 		{
 			for(i=0;i<Reach_Path.Reach_Cnt-1;i=i+2)
@@ -805,7 +805,7 @@ void min_cir(unsigned char *addr)
 			printf("SrandNum=%d\n",SrandNum[0]);
 			printf("have double OBS   reachable path========================\n");
 
-			//-----排序-------
+			//-----鎺掑簭-------
 			int tmp1_s=0;
 			for(i=0;i<FilterCount2-1;i++)
 			{
@@ -839,7 +839,7 @@ void min_cir(unsigned char *addr)
                 int tmp_right_dis = 0;
                 printf("have double OBS   reachable path========================\n");
                 printf("tmp_maxrad=%d\n", tmp_maxrad);
-                //----------找出最大可行入口----------
+                //----------鎵惧嚭鏈€澶у彲琛屽叆鍙�----------
                 for (i = 0; i < FilterCount2 - 1; i++)
                 {
                     if (tmp_maxrad == abs(FilterLidarAng2[i + 1] - FilterLidarAng2[i]))
@@ -864,12 +864,12 @@ void min_cir(unsigned char *addr)
                 printf("SrandNum[0]=%d\n", SrandNum[0]);
             }
 
-            //---如果只有单侧障碍物且视野覆盖小，目标导向性选取-------
+            //---濡傛灉鍙湁鍗曚晶闅滅鐗╀笖瑙嗛噹瑕嗙洊灏忥紝鐩爣瀵煎悜鎬ч€夊彇-------
             if (2 == HaveDoubleObsPath)
             {
-                //-----保证目标在机器人前方--即0-180°----------
-                //---判断角度的目的是为了判断距离，所以---
-                //-------需要转换为距离----修改--------------------
+                //-----淇濊瘉鐩爣鍦ㄦ満鍣ㄤ汉鍓嶆柟--鍗�0-180掳----------
+                //---鍒ゆ柇瑙掑害鐨勭洰鐨勬槸涓轰簡鍒ゆ柇璺濈锛屾墍浠�---
+                //-------闇€瑕佽浆鎹负璺濈----淇敼--------------------
                 int a = 0, b = 0;
                 if (SigleObs_MinDis > 250)
                 {
@@ -917,7 +917,7 @@ void min_cir(unsigned char *addr)
                 }
             }
 
-            //---单侧障碍物且视野覆盖大-----------------------------
+            //---鍗曚晶闅滅鐗╀笖瑙嗛噹瑕嗙洊澶�-----------------------------
             if (3 == HaveDoubleObsPath)
             {
                 if (abs(tmpminangle_f - 0) >= abs(1800 - tmpmaxangle_f))
@@ -929,9 +929,9 @@ void min_cir(unsigned char *addr)
             }
         }
 
-        //---机器人能够运行的前提是有前进方向---------------
-        //--且方向是由窗口内无障碍物或者有一侧障碍物----
-        //-----或者两侧障碍物所选出来的路径--------------------
+        //---鏈哄櫒浜鸿兘澶熻繍琛岀殑鍓嶆彁鏄湁鍓嶈繘鏂瑰悜---------------
+        //--涓旀柟鍚戞槸鐢辩獥鍙ｅ唴鏃犻殰纰嶇墿鎴栬€呮湁涓€渚ч殰纰嶇墿----
+        //-----鎴栬€呬袱渚ч殰纰嶇墿鎵€閫夊嚭鏉ョ殑璺緞--------------------
         if (SrandNum[0] && (HaveDoubleObsPath || HaveNoObs))
         {
             isArrivedDirect_Flag = 1;
@@ -969,11 +969,11 @@ void min_cir(unsigned char *addr)
 
     //printf("isArrivedDirect_Flag=%d\n",isArrivedDirect_Flag);
 
-    //--------------------RRT产生一个随机路径----------------------
+    //--------------------RRT浜х敓涓€涓殢鏈鸿矾寰�----------------------
 
-    //--------显示可行路径的边界---------------------------------
+    //--------鏄剧ず鍙璺緞鐨勮竟鐣�---------------------------------
 
-    //----------雷达扫到的近似边界点-------------------------------
+    //----------闆疯揪鎵埌鐨勮繎浼艰竟鐣岀偣-------------------------------
 
     //-------------------------------------------------------------------------
 
@@ -1010,8 +1010,8 @@ void min_cir(unsigned char *addr)
 	*/
     //------------------------------------------------------------------------
 
-    //------------------------屏幕上画圆-----------------------------------
-    //-----画窗口-------//
+    //------------------------灞忓箷涓婄敾鍦�-----------------------------------
+    //-----鐢荤獥鍙�-------//
 
     tmp_rollwindow_r = ROLLWINDOW_R / ROLLWINDOW_RITO + 130;
     if ((tmp_rollwindow_r > 150) && (tmp_rollwindow_r < (618 + 300)))
@@ -1127,7 +1127,7 @@ void min_cir(unsigned char *addr)
 	*/
     //---------------------------------------------------------------------
 
-    //-------------画目标物----------------------------------------
+    //-------------鐢荤洰鏍囩墿----------------------------------------
 
     for (d = 0; d < 2; d++)
 
@@ -1183,7 +1183,7 @@ void min_cir(unsigned char *addr)
             addr[cell(x, y, 2)] = 255;
         }
 
-    //-----------------模拟雷达扫描画面---------------------------------------
+    //-----------------妯℃嫙闆疯揪鎵弿鐢婚潰---------------------------------------
     /*
 	static float scan=0;
 
@@ -1193,7 +1193,7 @@ void min_cir(unsigned char *addr)
 		{
 			y=(r*sin(angle));
 			x=(r*cos(angle));
-			//----------雷达扫描线-------------
+			//----------闆疯揪鎵弿绾�-------------
 			if(abs(scan*100-angle*100)<3)
 			{
 				addr[cell(x,y,0)]=0;
@@ -1263,10 +1263,10 @@ void find_dir(unsigned char *addr)
     printf("tis then %d avg is %d \n", then_count, then_sum);
 }
 
-void scan(unsigned char *addr) // *addr象素数据存储的地方
+void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
 {
     int i = 0;
-    //-----------------for循环体变量----------------
+    //-----------------for寰幆浣撳彉閲�----------------
     int y = 0;
     int x = 0;
 
@@ -1288,7 +1288,7 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
     int ii = 0;
     int jj = 0;
 
-    //--------------------视觉坐标对称旋转x->y ；y->x---------------
+    //--------------------瑙嗚鍧愭爣瀵圭О鏃嬭浆x->y 锛泍->x---------------
     for (ii = -299; ii <= 299; ii++)
     {
         for (jj = -399; jj <= -1; jj++)
@@ -1325,7 +1325,7 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
 
             //-----------------------------------------------------------------
 
-            if (4 == rgb(addr, (r * sin(angle)), (r * cos(angle)))) //如果检测传入的像素数据是黄色
+            if (4 == rgb(addr, (r * sin(angle)), (r * cos(angle)))) //濡傛灉妫€娴嬩紶鍏ョ殑鍍忕礌鏁版嵁鏄粍鑹�
             {                                                       //rgb(unsigned char *addr,int y,int x)
                 if (r >= 50)
                 {
@@ -1346,13 +1346,13 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
 
                 for (i = 1; i < r_value; i = i + 1)
                 {
-                    //采集到黄色开始延伸如果还是黄色就继续判断
+                    //閲囬泦鍒伴粍鑹插紑濮嬪欢浼稿鏋滆繕鏄粍鑹插氨缁х画鍒ゆ柇
                     if (((4 == rgb(addr, (r + i) * sin(angle), (r + i) * cos(angle))) || (4 == rgb(addr, (r + i + 1) * sin(angle), (r + i + 1) * cos(angle)))) && ((4 == rgb(addr, (r - i) * sin(angle), (r - i) * cos(angle))) || (4 == rgb(addr, (r - i - 1) * sin(angle), (r - i - 1) * cos(angle)))))
                     {
                         y_j++;
                         y_r = i;
                     }
-                    //等到上下为黑色，停止
+                    //绛夊埌涓婁笅涓洪粦鑹诧紝鍋滄
                     if (((5 == rgb(addr, (r + i) * sin(angle), (r + i) * cos(angle))) || (5 == rgb(addr, (r + i + 1) * sin(angle), (r + i + 1) * cos(angle)))) && ((5 == rgb(addr, (r - i) * sin(angle), (r - i) * cos(angle))) || (5 == rgb(addr, (r - i - 1) * sin(angle), (r - i - 1) * cos(angle)))))
                     {
                         b_j1++;
@@ -1380,18 +1380,18 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
 
     //-----------------------------------------------------------------------------
 
-    robot_temp[0].count = pixel_j; //存储总目标数
+    robot_temp[0].count = pixel_j; //瀛樺偍鎬荤洰鏍囨暟
     //---------------------------------------------------------------------
     int start_j = 0;
     int j = 0;
-    int pixel_rad[10] = {0};     // 用于存储各个组别的像素点
-    float pixel_angle[10] = {0}; // 用于存储各个组别的像素点
+    int pixel_rad[10] = {0};     // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
+    float pixel_angle[10] = {0}; // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
 
-    float pixel_angle_zero[10] = {0}; // 用于存储零点附近的点
+    float pixel_angle_zero[10] = {0}; // 鐢ㄤ簬瀛樺偍闆剁偣闄勮繎鐨勭偣
     int pixel_rad_zero[10] = {0};
     int pixel_array_zeroj[10] = {0};
 
-    int pixel_array_j[10] = {0}; // 用于存储各个组别的像素点个数
+    int pixel_array_j[10] = {0}; // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣涓暟
 
     int Dif_rad = 0;
     int Dif_angle = 0;
@@ -1405,7 +1405,7 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
         for (j = 0; j < 10; j++)
         {
             //-------------------------------------------------------------------------------
-            for (i = 0; i < pixel_j; i++) // 找出还没有归类的像素点
+            for (i = 0; i < pixel_j; i++) // 鎵惧嚭杩樻病鏈夊綊绫荤殑鍍忕礌鐐�
             {
                 if (pixel_flag[i] == 1)
                 {
@@ -1417,7 +1417,7 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
                 }
             }
 
-            //---------------------不同的半径取不同的限制值---------------------------------------------
+            //---------------------涓嶅悓鐨勫崐寰勫彇涓嶅悓鐨勯檺鍒跺€�---------------------------------------------
             if (rad_array[start_j] < 100)
             {
                 Dif_rad = 25;
@@ -1462,9 +1462,9 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
             //----------------------------------------------------------------------------
 
             //----------------------------------------------------------------------------
-            for (i = 0; i < pixel_j; i++) // 进行每个周期的遍历
+            for (i = 0; i < pixel_j; i++) // 杩涜姣忎釜鍛ㄦ湡鐨勯亶鍘�
             {
-                //-------------------------处理零点特殊点------------------------------------
+                //-------------------------澶勭悊闆剁偣鐗规畩鐐�------------------------------------
                 if (angle_zero * 100 <= 2)
                 {
                     angle_zero = 6.283;
@@ -1493,7 +1493,7 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
                 if (pixel_flag[i] == 1 && abs(rad_array[start_j] - rad_array[i]) < Dif_rad) //
                 {
 
-                    if (abs(angle_old * 100 - angle_array[i] * 100) < Dif_angle) //10=0.01 还有在临界点上还需要考虑
+                    if (abs(angle_old * 100 - angle_array[i] * 100) < Dif_angle) //10=0.01 杩樻湁鍦ㄤ复鐣岀偣涓婅繕闇€瑕佽€冭檻
                     {
                         pixel_rad[j] += rad_array[i];
                         pixel_angle[j] += angle_array[i];
@@ -1524,12 +1524,12 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
         }
     }
 
-    //-----------------------第二层辨别-------------------------------------------
+    //-----------------------绗簩灞傝鲸鍒�-------------------------------------------
     //int lim_rad=0;
     //int lim_angle=0;
     int lim_count = 0;
-    int pixel_rad_tmp[10] = {0};     // 用于存储各个组别的像素点
-    float pixel_angle_tmp[10] = {0}; // 用于存储各个组别的像素点
+    int pixel_rad_tmp[10] = {0};     // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
+    float pixel_angle_tmp[10] = {0}; // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
     int pixel_array_j_tmp[10] = {0};
     int tmp_count = 0;
 
@@ -1617,9 +1617,9 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
         }
     }
 
-    //------------------------处理特殊情况------------------------------------------
+    //------------------------澶勭悊鐗规畩鎯呭喌------------------------------------------
 
-    //-------------------------障碍物边界精确提取-------------------------------
+    //-------------------------闅滅鐗╄竟鐣岀簿纭彁鍙�-------------------------------
     int edge = 0;
     int edge_i = 0;
     int shift_pix = 0;
@@ -1655,9 +1655,9 @@ void scan(unsigned char *addr) // *addr象素数据存储的地方
 }
 
 //==========================---link---=====================
-PNODE addBack(PNODE phead, int data, char *ip, int fd) //尾部插入
+PNODE addBack(PNODE phead, int data, char *ip, int fd) //灏鹃儴鎻掑叆
 {
-    node *pnew = malloc(sizeof(struct info)); //分配内存
+    node *pnew = malloc(sizeof(struct info)); //鍒嗛厤鍐呭瓨
     pnew->data = data;
     pnew->connected_flag = 1;
     pnew->iSocketClient = fd;
@@ -1674,19 +1674,19 @@ PNODE addBack(PNODE phead, int data, char *ip, int fd) //尾部插入
     else
     {
         PNODE p = phead;
-        while (p->pNext != phead) //循环到尾部
+        while (p->pNext != phead) //寰幆鍒板熬閮�
         {
             p = p->pNext;
         }
         p->pNext = pnew;
-        pnew->pNext = phead; //头尾相连
+        pnew->pNext = phead; //澶村熬鐩歌繛
     }
     return phead;
 }
 
-PNODE addBack_rec(PNODE phead, int data, char *ip) //尾部插入
+PNODE addBack_rec(PNODE phead, int data, char *ip) //灏鹃儴鎻掑叆
 {
-    node *pnew = malloc(sizeof(struct info)); //分配内存
+    node *pnew = malloc(sizeof(struct info)); //鍒嗛厤鍐呭瓨
     pnew->data = data;
     pnew->connected_flag = 0;
     pnew->iSocketClient = 111;
@@ -1703,17 +1703,17 @@ PNODE addBack_rec(PNODE phead, int data, char *ip) //尾部插入
     else
     {
         PNODE p = phead;
-        while (p->pNext != phead) //循环到尾部
+        while (p->pNext != phead) //寰幆鍒板熬閮�
         {
             p = p->pNext;
         }
         p->pNext = pnew;
-        pnew->pNext = phead; //头尾相连
+        pnew->pNext = phead; //澶村熬鐩歌繛
     }
     return phead;
 }
 
-//-----------------链表冒泡排序---------------
+//-----------------閾捐〃鍐掓场鎺掑簭---------------
 PNODE sortLink(PNODE phead)
 {
     int i = 0, j = 0, num = 0, temp_data = 0;
@@ -1761,9 +1761,9 @@ PNODE sortLink(PNODE phead)
 }
 
 //------------------------------------------------------
-PNODE addFront(PNODE phead, int data) //头部插入
+PNODE addFront(PNODE phead, int data) //澶撮儴鎻掑叆
 {
-    node *pnew = malloc(sizeof(struct info)); //分配内存
+    node *pnew = malloc(sizeof(struct info)); //鍒嗛厤鍐呭瓨
     pnew->data = data;
 
     if (phead == NULL)
@@ -1774,30 +1774,30 @@ PNODE addFront(PNODE phead, int data) //头部插入
     else
     {
         PNODE p = phead;
-        while (p->pNext != phead) //循环到尾部
+        while (p->pNext != phead) //寰幆鍒板熬閮�
         {
             p = p->pNext;
         }
         p->pNext = pnew;
-        pnew->pNext = phead; //头尾相连
+        pnew->pNext = phead; //澶村熬鐩歌繛
         phead = pnew;
     }
 
     return phead;
 }
 
-void showAll(PNODE phead) //显显示全部
+void showAll(PNODE phead) //鏄炬樉绀哄叏閮�
 {
     if (phead == NULL)
     {
-        printf("链表为空！\n");
+        printf("閾捐〃涓虹┖锛乗n");
         return;
     }
     else if (phead->pNext == phead)
     {
         printf("%d %d %d %d %s %p %p\n", phead->data, phead->start_connect_flag,
                phead->connected_flag, phead->iSocketClient,
-               phead->send_ip, phead, phead->pNext); //只有一个节点
+               phead->send_ip, phead, phead->pNext); //鍙湁涓€涓妭鐐�
     }
     else
     {
@@ -1809,17 +1809,17 @@ void showAll(PNODE phead) //显显示全部
             p = p->pNext;
         }
         printf("%d %d %d %d %s %p %p\n", p->data, p->start_connect_flag,
-               p->connected_flag, p->iSocketClient, p->send_ip, p, p->pNext); //最后一个节点。
+               p->connected_flag, p->iSocketClient, p->send_ip, p, p->pNext); //鏈€鍚庝竴涓妭鐐广€�
     }
 }
 
-PNODE findFirst(PNODE phead, int data) //检索数据
+PNODE findFirst(PNODE phead, int data) //妫€绱㈡暟鎹�
 {
     if (phead == NULL)
     {
         return NULL;
     }
-    else if (phead->pNext == phead) //如果头节点是要查询的数据
+    else if (phead->pNext == phead) //濡傛灉澶磋妭鐐规槸瑕佹煡璇㈢殑鏁版嵁
     {
         return phead;
     }
@@ -1830,11 +1830,11 @@ PNODE findFirst(PNODE phead, int data) //检索数据
         {
             if (p->data == data)
             {
-                return p; //如果找到返回。
+                return p; //濡傛灉鎵惧埌杩斿洖銆�
             }
             else
             {
-                p = p->pNext; //找不到继续前进
+                p = p->pNext; //鎵句笉鍒扮户缁墠杩�
             }
         }
         if (p->data == data)
@@ -1852,12 +1852,12 @@ PNODE findIp(PNODE phead, char *ip)
     {
         return NULL;
     }
-    else if (phead->pNext == phead) //如果头节点是要查询的数据
+    else if (phead->pNext == phead) //濡傛灉澶磋妭鐐规槸瑕佹煡璇㈢殑鏁版嵁
     {
         //return phead;
         if (strcmp(phead->send_ip, ip) == 0)
         {
-            return phead; //如果找到返回。
+            return phead; //濡傛灉鎵惧埌杩斿洖銆�
         }
         else
         {
@@ -1873,11 +1873,11 @@ PNODE findIp(PNODE phead, char *ip)
             if (strcmp(p->send_ip, ip) == 0)
 
             {
-                return p; //如果找到返回。
+                return p; //濡傛灉鎵惧埌杩斿洖銆�
             }
             else
             {
-                p = p->pNext; //找不到继续前进
+                p = p->pNext; //鎵句笉鍒扮户缁墠杩�
             }
         }
         //if (p->data == data)
@@ -1887,20 +1887,20 @@ PNODE findIp(PNODE phead, char *ip)
     }
 }
 
-PNODE deleteFirst(PNODE phead, int data) //删除数据
+PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
 {
-    //先判断要删除的数据是否存在。
+    //鍏堝垽鏂鍒犻櫎鐨勬暟鎹槸鍚﹀瓨鍦ㄣ€�
     PNODE p = findFirst(phead, data);
     if (p == NULL)
     {
-        printf("没有检索到数据！\n");
+        printf("娌℃湁妫€绱㈠埌鏁版嵁锛乗n");
         return phead;
     }
-    //删除需要使用双指针
+    //鍒犻櫎闇€瑕佷娇鐢ㄥ弻鎸囬拡
     PNODE p1, p2;
     p1 = phead;
     p2 = NULL;
-    //上面的判断要使用，否则最后一个不好判断
+    //涓婇潰鐨勫垽鏂浣跨敤锛屽惁鍒欐渶鍚庝竴涓笉濂藉垽鏂�
     while (p1->pNext != phead)
     {
         if (p1->data == data)
@@ -1910,7 +1910,7 @@ PNODE deleteFirst(PNODE phead, int data) //删除数据
         else
         {
             p2 = p1;
-            p1 = p1->pNext; //循环下个节点
+            p1 = p1->pNext; //寰幆涓嬩釜鑺傜偣
         }
     }
 
@@ -1928,8 +1928,8 @@ PNODE deleteFirst(PNODE phead, int data) //删除数据
             p = p->pNext;
         }
 
-        phead = phead->pNext; //改变头节点
-        free(p1);             //释放p1
+        phead = phead->pNext; //鏀瑰彉澶磋妭鐐�
+        free(p1);             //閲婃斁p1
         p->pNext = phead;
     }
 
@@ -1938,7 +1938,7 @@ PNODE deleteFirst(PNODE phead, int data) //删除数据
     //  {
     //      if (p1->data == data)
     //      {
-    //          printf("删除的数据是:%d %p\n", p1->data, p1);
+    //          printf("鍒犻櫎鐨勬暟鎹槸:%d %p\n", p1->data, p1);
     //          free(p1);
     //          phead = NULL;
     //          return phead;
@@ -1950,7 +1950,7 @@ PNODE deleteFirst(PNODE phead, int data) //删除数据
     //          {
     //              if (p1->data == data)
     //              {
-    //                  break;//找到后跳出循环
+    //                  break;//鎵惧埌鍚庤烦鍑哄惊鐜�
     //              }
     //              else
     //              {
@@ -1958,25 +1958,25 @@ PNODE deleteFirst(PNODE phead, int data) //删除数据
     //                  p1 = p1->pNext;
     //              }
     //          }
-    //      /* 这儿最后一个数据没有访问到，所以先要用查询，查询一遍 */
+    //      /* 杩欏効鏈€鍚庝竴涓暟鎹病鏈夎闂埌锛屾墍浠ュ厛瑕佺敤鏌ヨ锛屾煡璇竴閬� */
     //  }
-    //  if (p1 == phead)    //如果是第一个
+    //  if (p1 == phead)    //濡傛灉鏄涓€涓�
     //  {
     //      PNODE p = phead;
     //      while (p->pNext != phead)
     //      {
-    //          p = p->pNext;    //循环到尾部
+    //          p = p->pNext;    //寰幆鍒板熬閮�
     //      }
     //      phead = phead->pNext;
     //      p->pNext = phead;
-    //      printf("删除的数据是:%d %p\n", p1->data, p1);
+    //      printf("鍒犻櫎鐨勬暟鎹槸:%d %p\n", p1->data, p1);
     //      free(p1);
     //      p1 = NULL;
     //  }
     //  else
     //  {
     //      p2->pNext = p1->pNext;
-    //      printf("删除的数据是:%d %p\n", p1->data, p1);
+    //      printf("鍒犻櫎鐨勬暟鎹槸:%d %p\n", p1->data, p1);
     //      free(p1);
     //  }
     return phead;
@@ -1984,18 +1984,18 @@ PNODE deleteFirst(PNODE phead, int data) //删除数据
 
 PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
 {
-    //先判断要删除的数据是否存在。
+    //鍏堝垽鏂鍒犻櫎鐨勬暟鎹槸鍚﹀瓨鍦ㄣ€�
     PNODE p = findFirst(phead, data);
     if (p == NULL)
     {
-        printf("没有检索到数据！\n");
+        printf("娌℃湁妫€绱㈠埌鏁版嵁锛乗n");
         return phead;
     }
-    //删除需要使用双指针
+    //鍒犻櫎闇€瑕佷娇鐢ㄥ弻鎸囬拡
     PNODE p1, p2;
     p1 = phead;
     p2 = NULL;
-    //上面的判断要使用，否则最后一个不好判断
+    //涓婇潰鐨勫垽鏂浣跨敤锛屽惁鍒欐渶鍚庝竴涓笉濂藉垽鏂�
     while (p1->pNext != phead)
     {
         if (p1->data == data)
@@ -2005,7 +2005,7 @@ PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
         else
         {
             p2 = p1;
-            p1 = p1->pNext; //循环下个节点
+            p1 = p1->pNext; //寰幆涓嬩釜鑺傜偣
         }
     }
 
@@ -2013,7 +2013,7 @@ PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
     {
         p2->pNext = p1->pNext;
 
-        *ptemp = p1->pNext; //指向下个节点
+        *ptemp = p1->pNext; //鎸囧悜涓嬩釜鑺傜偣
 
         free(p1);
         p1 = NULL;
@@ -2026,18 +2026,18 @@ PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
             p = p->pNext;
         }
 
-        phead = phead->pNext; //改变头节点
+        phead = phead->pNext; //鏀瑰彉澶磋妭鐐�
 
-        *ptemp = p1->pNext; //指向下个节点
+        *ptemp = p1->pNext; //鎸囧悜涓嬩釜鑺傜偣
 
-        free(p1); //释放p1
+        free(p1); //閲婃斁p1
         p1 = NULL;
         p->pNext = phead;
     }
     return phead;
 }
 
-PNODE insertNode(PNODE phead, int finddata, int data) //插入数据
+PNODE insertNode(PNODE phead, int finddata, int data) //鎻掑叆鏁版嵁
 {
     PNODE pnew = malloc(sizeof(node));
     pnew->data = data;
@@ -2045,7 +2045,7 @@ PNODE insertNode(PNODE phead, int finddata, int data) //插入数据
     PNODE p = findFirst(phead, finddata);
     if (p == NULL)
     {
-        printf("没有找到要插入数据的标记！\n");
+        printf("娌℃湁鎵惧埌瑕佹彃鍏ユ暟鎹殑鏍囪锛乗n");
     }
     else
     {
@@ -2072,21 +2072,21 @@ PNODE insertNode(PNODE phead, int finddata, int data) //插入数据
             {
                 p = p->pNext;
             }
-            //插在前面
+            //鎻掑湪鍓嶉潰
             p->pNext = pnew;
             pnew->pNext = phead;
             phead = pnew;
 
-            //插在后面
+            //鎻掑湪鍚庨潰
             /*  pnew->pNext = phead->pNext; 
 			phead->pNext = pnew;*/
         }
         else
         {
-            //插在前面
+            //鎻掑湪鍓嶉潰
             p2->pNext = pnew;
             pnew->pNext = p1;
-            //插在后面
+            //鎻掑湪鍚庨潰
             /*pnew->pNext = p1->pNext; 
 			p1->pNext = pnew;*/
         }
@@ -2096,7 +2096,7 @@ PNODE insertNode(PNODE phead, int finddata, int data) //插入数据
 }
 
 //---------------------------------------------------------
-int getNum(PNODE phead) //返回链表的个数
+int getNum(PNODE phead) //杩斿洖閾捐〃鐨勪釜鏁�
 {
     if (phead == NULL)
     {

@@ -3,30 +3,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /**********************************************************************
- * º¯ÊýÃû³Æ£º PicZoom
- * ¹¦ÄÜÃèÊö£º ½üÁÚÈ¡Ñù²åÖµ·½·¨Ëõ·ÅÍ¼Æ¬
- *            ×¢Òâ¸Ãº¯Êý»á·ÖÅäÄÚ´æÀ´´æ·ÅËõ·ÅºóµÄÍ¼Æ¬,ÓÃÍêºóÒªÓÃfreeº¯ÊýÊÍ·Åµô
- *            "½üÁÚÈ¡Ñù²åÖµ"µÄÔ­ÀíÇë²Î¿¼ÍøÓÑ"lantianyu520"ËùÖøµÄ"Í¼ÏñËõ·ÅËã·¨"
- * ÊäÈë²ÎÊý£º ptOriginPic - ÄÚº¬Ô­Ê¼Í¼Æ¬µÄÏóËØÊý¾Ý
- *            ptBigPic    - ÄÚº¬Ëõ·ÅºóµÄÍ¼Æ¬µÄÏóËØÊý¾Ý
- * Êä³ö²ÎÊý£º ÎÞ
- * ·µ »Ø Öµ£º 0 - ³É¹¦, ÆäËûÖµ - Ê§°Ü
- * ÐÞ¸ÄÈÕÆÚ        °æ±¾ºÅ     ÐÞ¸ÄÈË	      ÐÞ¸ÄÄÚÈÝ
+ * å‡½æ•°åç§°ï¼š PicZoom
+ * åŠŸèƒ½æè¿°ï¼š è¿‘é‚»å–æ ·æ’å€¼æ–¹æ³•ç¼©æ”¾å›¾ç‰‡
+ *            æ³¨æ„è¯¥å‡½æ•°ä¼šåˆ†é…å†…å­˜æ¥å­˜æ”¾ç¼©æ”¾åŽçš„å›¾ç‰‡,ç”¨å®ŒåŽè¦ç”¨freeå‡½æ•°é‡Šæ”¾æŽ‰
+ *            "è¿‘é‚»å–æ ·æ’å€¼"çš„åŽŸç†è¯·å‚è€ƒç½‘å‹"lantianyu520"æ‰€è‘—çš„"å›¾åƒç¼©æ”¾ç®—æ³•"
+ * è¾“å…¥å‚æ•°ï¼š ptOriginPic - å†…å«åŽŸå§‹å›¾ç‰‡çš„è±¡ç´ æ•°æ®
+ *            ptBigPic    - å†…å«ç¼©æ”¾åŽçš„å›¾ç‰‡çš„è±¡ç´ æ•°æ®
+ * è¾“å‡ºå‚æ•°ï¼š æ— 
+ * è¿” å›ž å€¼ï¼š 0 - æˆåŠŸ, å…¶ä»–å€¼ - å¤±è´¥
+ * ä¿®æ”¹æ—¥æœŸ        ç‰ˆæœ¬å·     ä¿®æ”¹äºº	      ä¿®æ”¹å†…å®¹
  * -----------------------------------------------
- * 2013/02/08	     V1.0	  Î¤¶«É½	      ´´½¨
+ * 2013/02/08	     V1.0	  éŸ¦ä¸œå±±	      åˆ›å»º
  ***********************************************************************/
 int PicZoom(PT_PixelDatas ptOriginPic, PT_PixelDatas ptZoomPic)
 {
     unsigned long dwDstWidth = ptZoomPic->iWidth;
-    unsigned long* pdwSrcXTable;
-	unsigned long x;
-	unsigned long y;
-	unsigned long dwSrcY;
-	unsigned char *pucDest;
-	unsigned char *pucSrc;
-	unsigned long dwPixelBytes = ptOriginPic->iBpp/8;
+    unsigned long *pdwSrcXTable;
+    unsigned long x;
+    unsigned long y;
+    unsigned long dwSrcY;
+    unsigned char *pucDest;
+    unsigned char *pucSrc;
+    unsigned long dwPixelBytes = ptOriginPic->iBpp / 8;
 
     DBG_PRINTF("src:\n");
     DBG_PRINTF("%d x %d, %d bpp, data: 0x%x\n", ptOriginPic->iWidth, ptOriginPic->iHeight, ptOriginPic->iBpp, (unsigned int)ptOriginPic->aucPixelDatas);
@@ -34,10 +33,10 @@ int PicZoom(PT_PixelDatas ptOriginPic, PT_PixelDatas ptZoomPic)
     DBG_PRINTF("dest:\n");
     DBG_PRINTF("%d x %d, %d bpp, data: 0x%x\n", ptZoomPic->iWidth, ptZoomPic->iHeight, ptZoomPic->iBpp, (unsigned int)ptZoomPic->aucPixelDatas);
 
-	if (ptOriginPic->iBpp != ptZoomPic->iBpp)
-	{
-		return -1;
-	}
+    if (ptOriginPic->iBpp != ptZoomPic->iBpp)
+    {
+        return -1;
+    }
 
     pdwSrcXTable = malloc(sizeof(unsigned long) * dwDstWidth);
     if (NULL == pdwSrcXTable)
@@ -46,28 +45,27 @@ int PicZoom(PT_PixelDatas ptOriginPic, PT_PixelDatas ptZoomPic)
         return -1;
     }
 
-    for (x = 0; x < dwDstWidth; x++)//Éú³É±í pdwSrcXTable
+    for (x = 0; x < dwDstWidth; x++) //ç”Ÿæˆè¡¨ pdwSrcXTable
     {
-        pdwSrcXTable[x]=(x*ptOriginPic->iWidth/ptZoomPic->iWidth);
+        pdwSrcXTable[x] = (x * ptOriginPic->iWidth / ptZoomPic->iWidth);
     }
 
     for (y = 0; y < ptZoomPic->iHeight; y++)
-    {			
+    {
         dwSrcY = (y * ptOriginPic->iHeight / ptZoomPic->iHeight);
 
-		pucDest = ptZoomPic->aucPixelDatas + y*ptZoomPic->iLineBytes;
-		pucSrc  = ptOriginPic->aucPixelDatas + dwSrcY*ptOriginPic->iLineBytes;
-		
-        for (x = 0; x <dwDstWidth; x++)
+        pucDest = ptZoomPic->aucPixelDatas + y * ptZoomPic->iLineBytes;
+        pucSrc = ptOriginPic->aucPixelDatas + dwSrcY * ptOriginPic->iLineBytes;
+
+        for (x = 0; x < dwDstWidth; x++)
         {
-            /* Ô­Í¼×ù±ê: pdwSrcXTable[x]£¬srcy
-             * Ëõ·Å×ù±ê: x, y
+            /* åŽŸå›¾åº§æ ‡: pdwSrcXTable[x]ï¼Œsrcy
+             * ç¼©æ”¾åº§æ ‡: x, y
 			 */
-			 memcpy(pucDest+x*dwPixelBytes, pucSrc+pdwSrcXTable[x]*dwPixelBytes, dwPixelBytes);
+            memcpy(pucDest + x * dwPixelBytes, pucSrc + pdwSrcXTable[x] * dwPixelBytes, dwPixelBytes);
         }
     }
 
     free(pdwSrcXTable);
-	return 0;
+    return 0;
 }
-

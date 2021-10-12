@@ -205,7 +205,10 @@ int file_fd;
 void ControlFun(void)
 {
 	//---path following values---采用标准单位-------//
-
+	int get_x;
+	int get_y;
+	int get_tht;
+	//上述三个变量与全局变量分开
 	static float w = 0.0; //路径参数
 	float w_der = 0.0;	  //路径参数导数
 	float error_s = 0.0;  //前向跟踪误差
@@ -236,10 +239,32 @@ void ControlFun(void)
 	static int bezier_cnt = 0;
 	//----路径跟踪测试------//
 	//------将脉冲值转换为角速度、线速度标准值-----//
-	signal(SIGALRM, ControlFun);
+	//signal(SIGALRM, ControlFun);
 
 	timer_cnt++;
+	//if(w<1.0){
+	pthread_rwlock_rdlock(&rwlock);
+	frame_send.data[1] = (int)dlta_d >> 8;
+	frame_send.data[2] = (int)dlta_d;
+	frame_send.data[3] = (int)dlta_a >> 8;
+	frame_send.data[4] = (int)dlta_a;
+	frame_send.data[5] = 0;
+	nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+	pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
 
+	addr_len = sizeof(addr);
+	len = 0;
+
+	nbytes = recvfrom(s, &frame_rev, sizeof(struct can_frame), 0, (struct sockaddr *)&addr, &len);
+
+	ifr.ifr_ifindex = addr.can_ifindex;
+	ioctl(s, SIOCGIFNAME, &ifr);
+
+	get_y = (-1) * (short)(frame_rev.data[0] * 256 + frame_rev.data[1]); //代表y偏移量前进为-
+
+	get_x = (-1) * (short)(frame_rev.data[2] * 256 + frame_rev.data[3]); //代表x偏移量,左为正
+	get_tht = (short)(frame_rev.data[4] * 256 + frame_rev.data[5]);		 //右转为正
+																		 //}
 	//======将航位推算结果转换成测量值======//
 	x_measure = -1.0 * (double)get_x / 1000.0;
 	y_measure = -1.0 * (double)get_y / 1000.0; //get_x、get_y单位mm/s，get_thta单位0.1°/s
@@ -303,16 +328,16 @@ void ControlFun(void)
 
 		//*****注意:跟踪直线有方向区别*********//
 		//**********直线轨迹y = x  第一象限**********************//
-		/*
+
 		x_p = w;
-		y_p = w ;
+		y_p = w;
 
 		x_p_der = 1;
 		y_p_der = 1;
-		
+
 		x_p_derder = 0;
 		y_p_derder = 0;
-		*/
+
 		//**********直线轨迹y = x  第一象限**********************//
 
 		//********** 对称三阶贝塞尔曲线轨迹**********************//
@@ -341,16 +366,16 @@ void ControlFun(void)
 
 		//*************连续不停车运动第一段********************************//
 		//	if(!bezier_cnt)
-		//{
-		x_p = 1.6 * w * w * w - 2.4 * w * w;
-		y_p = 1.8 * w * w * w - 2.7 * w * w + 2.7 * w;
+		{
+			/* 			x_p = 1.6 * w * w * w - 2.4 * w * w;
+			y_p = 1.8 * w * w * w - 2.7 * w * w + 2.7 * w;
 
-		x_p_der = 5.4 * w * w - 4.8 * w;
-		y_p_der = 5.4 * w * w - 5.4 * w + 2.7;
+			x_p_der = 5.4 * w * w - 4.8 * w;
+			y_p_der = 5.4 * w * w - 5.4 * w + 2.7;
 
-		x_p_derder = 10.8 * w - 4.8;
-		y_p_derder = 10.8 * w - 5.4;
-		//}
+			x_p_derder = 10.8 * w - 4.8;
+			y_p_derder = 10.8 * w - 5.4; */
+		}
 
 		//*************连续不停车运动第二段********************************//
 		//else
@@ -460,27 +485,7 @@ void ControlFun(void)
 		dlta_a = 0;
 	}
 
-	//if(w<1.0){
-	frame_send.data[1] = (int)dlta_d >> 8;
-	frame_send.data[2] = (int)dlta_d;
-	frame_send.data[3] = (int)dlta_a >> 8;
-	frame_send.data[4] = (int)dlta_a;
-	frame_send.data[5] = 0;
-	nbytes = write(can_fd, &frame_send, sizeof(frame_send));
-
-	addr_len = sizeof(addr);
-	len = 0;
-
-	nbytes = recvfrom(s, &frame_rev, sizeof(struct can_frame), 0, (struct sockaddr *)&addr, &len);
-
-	ifr.ifr_ifindex = addr.can_ifindex;
-	ioctl(s, SIOCGIFNAME, &ifr);
-
-	get_y = (-1) * (short)(frame_rev.data[0] * 256 + frame_rev.data[1]); //代表y偏移量前进为-
-	get_x = (-1) * (short)(frame_rev.data[2] * 256 + frame_rev.data[3]); //代表x偏移量,左为正
-	get_tht = (short)(frame_rev.data[4] * 256 + frame_rev.data[5]);		 //右转为正
-																		 //}
-																		 /*
+	/*
 	else
 	{
 		frame_send.data[1]=(int)dlta_d>>8;
@@ -523,9 +528,9 @@ int main(int argc, char **argv)
 	int read_num = 0;
 	float sin_count = 0.001;
 
-	////get_time.start_flag = 0;
-	////get_time.time_flag = 0;
-
+	int lidar_stop = 0;
+	int reset_flag = 0;
+	int resetok_flag = 0;
 	//----------------------------
 	T_InputEvent tInputEvent;  //触摸屏相关
 	T_VideoBuf tFrameBuf_main; //
@@ -622,7 +627,25 @@ int main(int argc, char **argv)
 	DBG_PRINTF("y %d\n", tFrameBuf_main.tPixelDatas.iHeight); //600
 	//----------------------------
 
-	pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
+	//===系统定时器======//
+
+	struct itimerval tick;
+
+	signal(SIGALRM, ControlFun);
+	memset(&tick, 0, sizeof(tick));
+
+	//Timeout to run first time
+	tick.it_value.tv_sec = 0;
+	tick.it_value.tv_usec = 200000;
+
+	//After first, the Interval time for clock
+	tick.it_interval.tv_sec = 0;
+	tick.it_interval.tv_usec = 200000;
+
+	if (setitimer(ITIMER_REAL, &tick, NULL) < 0)
+		printf("Set timer failed!\n");
+
+	//pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
 	/*所有关于卡尔曼滤波的线程都从上面这行开始，如果你想终止卡尔曼的所有程序，请将上一行屏蔽，这对主程序不会有影响*/
 	char *local_ip = NULL;
 	local_ip = GetLocalIp();
@@ -641,6 +664,14 @@ int main(int argc, char **argv)
 		//206机器人观测时，与目标机器人实际距离为 50 cm时，像素点个数为 79
 		dis_50 = 79.0;
 	}
+	if (!reset_flag)
+	{
+		frame_send.data[5] = 1; // 1底层坐标和角度清零
+		nbytes = write(can_fd, &frame_send, sizeof(frame_send));
+		reset_flag = 1;
+		resetok_flag = 1;
+		resetok_flag++;
+	}
 	while (1)
 	{
 		//---------------触摸屏---------------------
@@ -656,17 +687,8 @@ int main(int argc, char **argv)
 			choice_y = tInputEvent.y;
 		}
 		//---------------------------------------------
+		//--工程运行开始复位底层航位推算值---
 
-		//dlta_d = 100;
-		//dlta_a = 100;
-		pthread_rwlock_rdlock(&rwlock);
-		frame_send.data[1] = (int)dlta_d >> 8;
-		frame_send.data[2] = (int)dlta_d;
-		frame_send.data[3] = (int)dlta_a >> 8;
-		frame_send.data[4] = (int)dlta_a;
-		frame_send.data[5] = 0;
-		nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
-		pthread_rwlock_unlock(&rwlock);							 //解锁，如果ekf线程需要对速度进行改变，则需要锁
 		//--------------------------------------------------
 
 		addr_len = sizeof(addr);
@@ -833,8 +855,6 @@ int main(int argc, char **argv)
 		global.angl = dlta_a;
 		robot_ekf[0].x = get_x;
 		robot_ekf[0].y = get_y;
-		robot_ekf[0].distance = (int)sqrt(robot_ekf[0].x + robot_ekf[0].y); //经航位推算得到机器人的行走距离
-		//file_write(file_fd, robot_ekf[0].distance, get_y, get_x, get_tht, Ture_Tht);
 		robot_ekf[0].angle = get_tht; //经航位推算得到机器人的旋转角度
 
 		mymsg_send.dlta_d = dlta_d;	  //填充 mymsg_send 结构体信息
@@ -1452,7 +1472,7 @@ void *client_thread(void *arg)
 			{
 				if (mymsg_recv.flag == 'y')
 				{
-					//printf("------------------------I get a order-------form %s------\n", substr(mymsg_recv.local_ip, 12, 1));
+					//printf("------------------------I get a order-------form %s------\n", substr(mymsg_recv.local_ip, 12, 1));// 测试令牌环网络是否正常
 					global.order_flag = 1;
 				}
 			}
@@ -1769,29 +1789,51 @@ int robotRuning1()
 	int time_count = 0;
 	while (1)
 	{
-		for (time_count = 0; time_count < 300; time_count++)
+		for (time_count = 0; time_count < 100; time_count++)
 		{
-			pthread_rwlock_wrlock(&rwlock); //获取写入锁
 			//dlta_d = abs(100);
 			//dlta_a = 100 * sin(sin_count) / pow((1 + cos(sin_count) * cos(sin_count)), 1.5);
 			//sin_count = sin_count + 0.02;
-			dlta_a = 100;
+			//dlta_a = 100;
 			dlta_d = 100;
-			pthread_rwlock_unlock(&rwlock); //解锁
+			pthread_rwlock_rdlock(&rwlock);
+			frame_send.data[1] = (int)dlta_d >> 8;
+			frame_send.data[2] = (int)dlta_d;
+			frame_send.data[3] = (int)dlta_a >> 8;
+			frame_send.data[4] = (int)dlta_a;
+			frame_send.data[5] = 0;
+			nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+			pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
 			milliseconds_sleep(100);
 		}
-		dlta_a = 0;
+		//dlta_a = 0;
 		dlta_d = 0;
+		pthread_rwlock_rdlock(&rwlock);
+		frame_send.data[1] = (int)dlta_d >> 8;
+		frame_send.data[2] = (int)dlta_d;
+		frame_send.data[3] = (int)dlta_a >> 8;
+		frame_send.data[4] = (int)dlta_a;
+		frame_send.data[5] = 0;
+		nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+		pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
 		milliseconds_sleep(100);
-		for (time_count = 0; time_count < 300; time_count++)
+		for (time_count = 0; time_count < 100; time_count++)
 		{
-			pthread_rwlock_wrlock(&rwlock); //获取写入锁
+
 			//	dlta_d = -100;
 			//	dlta_a = -100 * sin(sin_count) / pow((1 + cos(sin_count) * cos(sin_count)), 1.5);
 			//	sin_count = sin_count - 0.02;
-			dlta_a = -100;
+			//dlta_a = -100;
 			dlta_d = -100;
-			pthread_rwlock_unlock(&rwlock); //解锁
+			pthread_rwlock_rdlock(&rwlock);
+			frame_send.data[1] = (int)dlta_d >> 8;
+			frame_send.data[2] = (int)dlta_d;
+			frame_send.data[3] = (int)dlta_a >> 8;
+			frame_send.data[4] = (int)dlta_a;
+			frame_send.data[5] = 0;
+			nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+			pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
+
 			milliseconds_sleep(100);
 		}
 	}
@@ -1809,7 +1851,7 @@ void *ekf_multi(void *arg)
 	//pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
 	//}
 	pthread_t robotRun;
-	pthread_create(&robotRun, NULL, robotRuning, NULL); //该线程用于记录
+	pthread_create(&robotRun, NULL, robotRuning1, NULL); //该线程用于记录
 	if (robot_end[1].count == 1)
 	{
 		printf("no robot connect\n,%d", robot_end[1].count);
@@ -1833,5 +1875,6 @@ void *ekf_multi(void *arg)
 		pthread_join(tTreadEkf, NULL);
 		pthread_join(tTreadEkf2, NULL);
 	}
+	pthread_join(robotRun, NULL);
 	return arg;
 }

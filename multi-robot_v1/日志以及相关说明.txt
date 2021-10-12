@@ -3,7 +3,7 @@ Makefile使用前请将这句话先执行一遍，因为这个Ubuntu里有一个
 使用前要把这个旧的交叉编译器的路径放到环境变量里，如果想要永久使用，请更新/etc/profile文件
 
 imwheel 
-用于加快鼠标滚轮速度，方便翻阅代码
+一个已下载的小插件，用于加快鼠标滚轮速度，方便翻阅代码
 
 使用分支来对文件进行修改的流程：
 git checkout -b guozi
@@ -66,4 +66,17 @@ bug：使用2312会使程序的注释出现乱码，因此暂时屏蔽。期待�
 贝塞尔曲线等部分
 的修改
 
-PS:在头文件中的变量不要进行初始化！
+2021年10月11日16:32:32
+dlta_d = 100;
+dlta_a = 0;
+pthread_rwlock_rdlock(&rwlock);
+frame_send.data[1] = (int)dlta_d >> 8;
+frame_send.data[2] = (int)dlta_d;
+frame_send.data[3] = (int)dlta_a >> 8;
+frame_send.data[4] = (int)dlta_a;
+frame_send.data[5] = 0;
+nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
+上述是修改v和w的方式，不局限于主线程。可在任何线程中直接使用
+
+PS:在头文件中的变量不要进行初始化赋值！否则编译的时候会出现错误

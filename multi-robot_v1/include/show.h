@@ -1,3 +1,7 @@
+#ifndef _SHOW_H
+#define _SHOW_H
+
+
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -10,8 +14,8 @@
 #include <global.h>
 #include <io.h>
 
-
 #define FONTDATAMAX 4096
+
 
 static const unsigned char fontdata_8x16[FONTDATAMAX] = {
 
@@ -4605,7 +4609,7 @@ static const unsigned char fontdata_8x16[FONTDATAMAX] = {
 	0x00, /* 00000000 */
 	0x00, /* 00000000 */
 
-	/* 255 0xff '�' */
+	/* 255 0xff '?' */
 	0x00, /* 00000000 */
 	0x00, /* 00000000 */
 	0x00, /* 00000000 */
@@ -4645,8 +4649,6 @@ void lcd_put_pixel(int x, int y, unsigned int color,PT_PixelDatas ptPixelDatas)
 	unsigned char *pen_8 = ptPixelDatas->aucPixelDatas+y*3200+x*4;
 	unsigned char *pen_80 = ptPixelDatas->aucPixelDatas+y*3200+x*4;
 	unsigned int *pen_32;	
-
-	
 
 	if(x<=800&&y<600)
 		{
@@ -4697,22 +4699,22 @@ void lcd_put_ascii(int x, int y, unsigned char c,PT_PixelDatas ptPixelDatas)
 
 void lcd_put_chinese(int x, int y, unsigned char *str,PT_PixelDatas ptPixelDatas)
 {
-	    unsigned int area ;
-		unsigned int where ;
-		unsigned char *dots = NULL;
-		unsigned char byte;
-		unsigned char k=0;
+	unsigned int area ;
+	unsigned int where ;
+	unsigned char *dots = NULL;
+	unsigned char byte;
+	unsigned char k=0;
 
-while(str[k]!=0)
-{
-	
-	 area  = str[k] - 0xA1;
-	 where = str[k+1] - 0xA1;
-	 dots = hzkmem + (area * 94 + where)*32;
-	
+	while(str[k]!=0)
+	{
 
-	int i, j, b;
-	for (i = 0; i < 16; i++)
+		area  = str[k] - 0xA1;
+		where = str[k+1] - 0xA1;
+		dots = hzkmem + (area * 94 + where)*32;
+
+
+		int i, j, b;
+		for (i = 0; i < 16; i++)
 		for (j = 0; j < 2; j++)
 		{
 			byte = dots[i*2 + j];
@@ -4728,114 +4730,131 @@ while(str[k]!=0)
 					/* hide */
 					lcd_put_pixel(x+j*8+7-b, y+i, 0,ptPixelDatas); /* 黑 */
 				}
-				
 			}
 		}
-	k=k+2;
-	x=x+16;
-}
+		k=k+2;
+		x=x+16;
+	}
 }
 
 void write_num(unsigned int x,unsigned int y , int num,PT_PixelDatas ptPixelDatas)
 {
- unsigned char data0=0, data1=0,data2=0,data3=0,data4=0;
- if(num<0)
- {
- num=-num;
-  data0=num/10000;
-   data1=(num/1000)%10;
-  data2=(num/100)%10;
-  data3=(num/10)%10;
-  data4=(num)%10;
-  
- lcd_put_ascii(x, y, '-',ptPixelDatas);
- 
-lcd_put_ascii(x+8, y, data1+48,ptPixelDatas);
-lcd_put_ascii(x+16, y, data2+48,ptPixelDatas);
-lcd_put_ascii(x+24, y, data3+48,ptPixelDatas);
-lcd_put_ascii(x+32, y, data4+48,ptPixelDatas);
+	unsigned char data0=0, data1=0,data2=0,data3=0,data4=0;
+	if(num<0)
+	{
+		num=-num;
+		data0=num/10000;
+		data1=(num/1000)%10;
+		data2=(num/100)%10;
+		data3=(num/10)%10;
+		data4=(num)%10;
 
- }
- else
- 	{
- data0=num/10000;
- data1=(num/1000)%10;
- data2=(num/100)%10;
- data3=(num/10)%10;
- data4=(num)%10;
+		lcd_put_ascii(x, y, '-',ptPixelDatas);
 
-lcd_put_ascii(x, y, data0+48,ptPixelDatas);
-lcd_put_ascii(x+8, y, data1+48,ptPixelDatas);
-lcd_put_ascii(x+16, y, data2+48,ptPixelDatas);
-lcd_put_ascii(x+24, y, data3+48,ptPixelDatas);
-lcd_put_ascii(x+32, y, data4+48,ptPixelDatas);
- 	}
+		lcd_put_ascii(x+8, y, data1+48,ptPixelDatas);
+		lcd_put_ascii(x+16, y, data2+48,ptPixelDatas);
+		lcd_put_ascii(x+24, y, data3+48,ptPixelDatas);
+		lcd_put_ascii(x+32, y, data4+48,ptPixelDatas);
+	}
+	else
+	{
+		data0=num/10000;
+		data1=(num/1000)%10;
+		data2=(num/100)%10;
+		data3=(num/10)%10;
+		data4=(num)%10;
+
+		lcd_put_ascii(x, y, data0+48,ptPixelDatas);
+		lcd_put_ascii(x+8, y, data1+48,ptPixelDatas);
+		lcd_put_ascii(x+16, y, data2+48,ptPixelDatas);
+		lcd_put_ascii(x+24, y, data3+48,ptPixelDatas);
+		lcd_put_ascii(x+32, y, data4+48,ptPixelDatas);
+	}
 
 }
 
 void show_some(PT_PixelDatas ptPixelDatas)
-{
-	   
-	 
+{	   
+	unsigned char data_all[] = "总目标";
 
-		 unsigned char data_all[] = "总目标";
-		
-		 unsigned char data1[] = "目标一";
-		 unsigned char data2[] = "目标二";
-		 unsigned char data3[] = "目标三";
-		 unsigned char data4[] = "目标四";
-		 unsigned char data5[] = "目标五";
-		 unsigned char data6[] = "目标六";
-		// unsigned char data6[] = "六";
+	unsigned char data1[] = "目标一";
+	unsigned char data2[] = "目标二";
+	unsigned char data3[] = "目标三";
+	unsigned char data4[] = "目标四";
+	unsigned char data5[] = "目标五";
+	unsigned char data6[] = "目标六";
+	// unsigned char data6[] = "六";
 
-		 unsigned char compass_start[] = "罗盘初始值";
-		 unsigned char compass_now[] = "罗盘现在值";
-		 unsigned char wind[]    = "风速";
-		 unsigned char smell[]  = "气味";
-		
-		 unsigned char linval[] = "给定线速度";		  
-		 unsigned char angval[] = "给定角速度";
+	unsigned char compass_start[] = "罗盘初始值";
+	unsigned char compass_now[] = "罗盘现在值";
+	unsigned char wind[]    = "风速";
+	unsigned char smell[]  = "气味";
 
-		 unsigned char get_linval[] = "得到坐标";
-		 unsigned char get_angle[] =  "得到角度";
+	unsigned char linval[] = "给定线速度";		  
+	unsigned char angval[] = "给定角速度";
 
-		 
-		
-		 
-	 lcd_put_chinese(16,  800, compass_start,ptPixelDatas);// 1
-	 write_num(      116,  800 ,First_Angle,ptPixelDatas);
-	 lcd_put_chinese(16,  832, compass_now,ptPixelDatas);// 1
-	 write_num(      116,  832 ,Ture_Tht,ptPixelDatas);
-	  
+	unsigned char get_linval[] = "得到坐标";
+	unsigned char get_angle[] =  "得到角度";
+
+//--------------------激光传感器数据-----------------------------
+
+	unsigned char lidar_angle[] =  "激光传感器角度";	//精确到0.1°
+	unsigned char lidar_dist[] =  "激光传感器距离";	//精确到毫米
+	unsigned char lidar_quality[] =  "扫描点可信度";
+	unsigned char lidar_distpix[] =  "距离对应像素点";
+	unsigned char ok_path[] =  "可行路径数";
+	unsigned char ok_pathwidth[] =  "可行路径宽度";
+	
+
+
+	lcd_put_chinese(16,  900, lidar_angle,ptPixelDatas);// 1
+	write_num(      156,  900,CurLidarAng2,ptPixelDatas);
+	lcd_put_chinese(16,  932, lidar_dist,ptPixelDatas);// 1
+	write_num(      156,  932,CurLidarDist,ptPixelDatas);
+	lcd_put_chinese(16,  964, lidar_quality,ptPixelDatas);// 1
+	write_num(      156,  964 ,CurLidarQuality,ptPixelDatas);
+	lcd_put_chinese(16,  996, lidar_distpix,ptPixelDatas);// 1
+	write_num(      156,  996,CurLidarDistPix2,ptPixelDatas);
+	lcd_put_chinese(16,  1028, ok_path,ptPixelDatas);// 1
+	write_num(      156,  1028,OkPathCnt/2,ptPixelDatas);
+	lcd_put_chinese(16,  1060, ok_path,ptPixelDatas);// 1
+	write_num(      156,  1060,PathWidth,ptPixelDatas);
+//-------------------------------------------------------------------------
+
+	lcd_put_chinese(16,  800, compass_start,ptPixelDatas);// 1
+	write_num(      116,  800 ,First_Angle,ptPixelDatas);
+	lcd_put_chinese(16,  832, compass_now,ptPixelDatas);// 1
+	write_num(      116,  832 ,Ture_Tht,ptPixelDatas);
+
 	// lcd_put_chinese(820,  630, wind,ptPixelDatas);// 1
 	// lcd_put_chinese(820,  660, smell,ptPixelDatas);// 1
-	 
-	 lcd_put_chinese(216,  800, linval,ptPixelDatas);// 1
-	  write_num(      316,  800 ,dlta_d,ptPixelDatas);
-	  
-	  
-	 lcd_put_chinese(216,  832, angval,ptPixelDatas);// 1
-	  write_num(      316,  832 ,dlta_a,ptPixelDatas);
-//---------------底层数据------------------------
+
+	lcd_put_chinese(216,  800, linval,ptPixelDatas);// 1
+	write_num(      316,  800 ,dlta_d,ptPixelDatas);
+
+
+	lcd_put_chinese(216,  832, angval,ptPixelDatas);// 1
+	write_num(      316,  832 ,dlta_a,ptPixelDatas);
+	//---------------底层数据------------------------
 
 	lcd_put_chinese(416,  800, get_linval,ptPixelDatas);// 1
 	write_num(516,  800 ,get_x,ptPixelDatas);	
 	write_num(516,  816 ,get_y,ptPixelDatas); 
 
 	lcd_put_chinese(416,  832, get_angle,ptPixelDatas);// 1
-    write_num(516,  832 ,get_tht,ptPixelDatas);
+	write_num(516,  832 ,get_tht,ptPixelDatas);
 
-	  
+
 	//----------------------目标1.2.3.4.5-------------
-	
-	 lcd_put_chinese(116,  616, data1,ptPixelDatas);
-	 lcd_put_chinese(216,  616, data2,ptPixelDatas);
-     lcd_put_chinese(316,  616, data3,ptPixelDatas);
-	 lcd_put_chinese(416,  616, data4,ptPixelDatas);
-	 lcd_put_chinese(516,  616, data5,ptPixelDatas);
-	 lcd_put_chinese(616,  616, data6,ptPixelDatas);
-	 lcd_put_chinese(716,  616, data_all,ptPixelDatas);// 5
-	 
+
+	lcd_put_chinese(116,  616, data1,ptPixelDatas);
+	lcd_put_chinese(216,  616, data2,ptPixelDatas);
+	lcd_put_chinese(316,  616, data3,ptPixelDatas);
+	lcd_put_chinese(416,  616, data4,ptPixelDatas);
+	lcd_put_chinese(516,  616, data5,ptPixelDatas);
+	lcd_put_chinese(616,  616, data6,ptPixelDatas);
+	lcd_put_chinese(716,  616, data_all,ptPixelDatas);// 5
+
 	//-----------------------------------------------------------
 	write_num(116,648 ,robot_temp[1].rad,ptPixelDatas);
 	write_num(116,664 ,robot_temp[1].angle,ptPixelDatas);
@@ -4844,29 +4863,29 @@ void show_some(PT_PixelDatas ptPixelDatas)
 	write_num(116,712 ,robot_temp[1].count,ptPixelDatas);
 	write_num(116,728 ,robot_temp[1].distance,ptPixelDatas);
 
-	
-	
+
+
 	write_num(216,648 ,robot_temp[2].rad,ptPixelDatas);
 	write_num(216,664 ,robot_temp[2].angle,ptPixelDatas);
 	write_num(216,680 ,robot_temp[2].x,ptPixelDatas);
 	write_num(216,696 ,robot_temp[2].y,ptPixelDatas);
 	write_num(216,712 ,robot_temp[2].count,ptPixelDatas);
 	write_num(216,728 ,robot_temp[2].distance,ptPixelDatas);
-	
+
 	write_num(316,648 ,robot_temp[3].rad,ptPixelDatas);
 	write_num(316,664 ,robot_temp[3].angle,ptPixelDatas);
 	write_num(316,680 ,robot_temp[3].x,ptPixelDatas);
 	write_num(316,696 ,robot_temp[3].y,ptPixelDatas);
 	write_num(316,712 ,robot_temp[3].count,ptPixelDatas);
 	write_num(316,728 ,robot_temp[3].distance,ptPixelDatas);
-	
+
 	write_num(416,648 ,robot_temp[4].rad,ptPixelDatas);
 	write_num(416,664 ,robot_temp[4].angle,ptPixelDatas);
 	write_num(416,680 ,robot_temp[4].x,ptPixelDatas);
 	write_num(416,696 ,robot_temp[4].y,ptPixelDatas);
 	write_num(416,712 ,robot_temp[4].count,ptPixelDatas);
 	write_num(416,728 ,robot_temp[4].distance,ptPixelDatas);
-	
+
 	write_num(516,648 ,robot_temp[5].rad,ptPixelDatas);
 	write_num(516,664 ,robot_temp[5].angle,ptPixelDatas);
 	write_num(516,680 ,robot_temp[5].x,ptPixelDatas);
@@ -4874,524 +4893,537 @@ void show_some(PT_PixelDatas ptPixelDatas)
 	write_num(516,712 ,robot_temp[5].count,ptPixelDatas);
 	write_num(516,728 ,robot_temp[5].distance,ptPixelDatas);
 
- 
-     write_num(616,648 ,robot_temp[6].rad,ptPixelDatas);
-	 write_num(616,664 ,robot_temp[6].angle,ptPixelDatas);
-	 write_num(616,680 ,robot_temp[6].x,ptPixelDatas);
-	 write_num(616,696 ,robot_temp[6].y,ptPixelDatas);
-	 write_num(616,712 ,robot_temp[6].count,ptPixelDatas);
-	 write_num(616,728 ,robot_temp[6].distance,ptPixelDatas);
-	
-	
+
+	write_num(616,648 ,robot_temp[6].rad,ptPixelDatas);
+	write_num(616,664 ,robot_temp[6].angle,ptPixelDatas);
+	write_num(616,680 ,robot_temp[6].x,ptPixelDatas);
+	write_num(616,696 ,robot_temp[6].y,ptPixelDatas);
+	write_num(616,712 ,robot_temp[6].count,ptPixelDatas);
+	write_num(616,728 ,robot_temp[6].distance,ptPixelDatas);
+
+
 	write_num(716,648 ,robot_temp[0].rad,ptPixelDatas);
 	write_num(716,664 ,robot_temp[0].angle,ptPixelDatas);
 
 	write_num(716,680,robot_temp[0].number,ptPixelDatas);
 	write_num(716,712 ,robot_temp[0].count,ptPixelDatas);
-	
-	
-	
+
+
 }
 
 
 void hzk_init(void)
 {
 
-     fd_hzk16 = open("HZK16", O_RDONLY);
-  
-	  if (fd_hzk16 < 0)
-	  {
-		  printf("can't open HZK16\n");
-		  return -1;
-	  }
-	  if(fstat(fd_hzk16, &hzk_stat))
-	  {
-		  printf("can't get fstat\n");
-		  return -1;
-	  }
-	  hzkmem = (unsigned char *)mmap(NULL , hzk_stat.st_size, PROT_READ, MAP_SHARED, fd_hzk16, 0);
-	  if (hzkmem == (unsigned char *)-1)
-	  {
-		  printf("can't mmap for hzk16\n");
-		  return -1;
-	  }
+	fd_hzk16 = open("HZK16", O_RDONLY);
 
-
+	if (fd_hzk16 < 0)
+	{
+		printf("can't open HZK16\n");
+		return -1;
+	}
+	if(fstat(fd_hzk16, &hzk_stat))
+	{
+		printf("can't get fstat\n");
+		return -1;
+	}
+	hzkmem = (unsigned char *)mmap(NULL , hzk_stat.st_size, PROT_READ, MAP_SHARED, fd_hzk16, 0);
+	if (hzkmem == (unsigned char *)-1)
+	{
+		printf("can't mmap for hzk16\n");
+		return -1;
+	}
 }
+
+
+
+//-----该函数用于触摸屏显示的控制底层的按钮操作-------
 void out_set(int x,int y, PT_PixelDatas ptBigPic)
 {
-	    int i=0;
-		int j=0;
-		unsigned char *addrbig;
-		addrbig=ptBigPic->aucPixelDatas;
-		unsigned char str[] = "读写文件";
-		unsigned char str1[] = "暂停读写";
-		unsigned char compass[] = "重置罗盘";
-		unsigned char task[] = "直线任务";
-//------------------任务一直线任务------------
+	int i=0;
+	int j=0;
+	unsigned char *addrbig;
+	addrbig=ptBigPic->aucPixelDatas;
+	unsigned char str[] = "读写文件";
+	unsigned char str1[] = "暂停读写";
+	unsigned char compass[] = "重置罗盘";
+	unsigned char task[] = "直线任务";
+	//------------------任务一直线任务------------
 	for(i=810;i<=1010;i++)
+	{
+		for(j=340;j<=390;j++)
 		{
-		  for(j=340;j<=390;j++)
-		  {
 			addrbig[big_cell((i),(j),0)]=0;//b
 			addrbig[big_cell((i),(j),1)]=255;//g
 			addrbig[big_cell((i),(j),2)]=0;//r
-		  }
-		  
 		}
+	}
 	if(x>810&&x<1010&&y>340&&y<390)
 	{
 		get_time.start_flag=1;
 		for(i=810;i<=1010;i++)
 		{
-		  for(j=340;j<=390;j++)
-		  {
-			addrbig[big_cell((i),(j),0)]=0;//b
-			addrbig[big_cell((i),(j),1)]=0;//g
-			addrbig[big_cell((i),(j),2)]=255;//r
-		  }
-		  
+			for(j=340;j<=390;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
 		}
 	}
-	
+
 	lcd_put_chinese(880,  358, task,ptBigPic);// 1	
 
 	//----------------读写文件----------------
-	  if(x>810&&x<910&&y>280&&y<330)
-	   {
-        file_flag=1;
+	if(x>810&&x<910&&y>280&&y<330)
+	{
+		file_flag=1;
+	}
+	if(x>910&&x<1010&&y>280&&y<330)
+	{
+		file_flag=-1;
+	}
+	if(file_flag==1)
+	{
 
-	   }
-	   if(x>910&&x<1010&&y>280&&y<330)
-	   {
-        file_flag=-1;
+	for(i=810;i<=1010;i++)
+		{
+			for(j=280;j<=330;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=255;//g
+				addrbig[big_cell((i),(j),2)]=0;//r
+			}
 
-	   }
-	  if(file_flag==1)
-	  	{
-	  	 
-       for(i=810;i<=1010;i++)
-			  {
-				for(j=280;j<=330;j++)
-				{
-				  addrbig[big_cell((i),(j),0)]=0;//b
-				  addrbig[big_cell((i),(j),1)]=255;//g
-				  addrbig[big_cell((i),(j),2)]=0;//r
-				}
-				
-			  }
-	   lcd_put_chinese(880,  298, str,ptBigPic);// 1
-	    }
-	  if(file_flag==-1)
-	  	{
-	  	
-		  for(i=810;i<=1010;i++)
-					   {
-						 for(j=280;j<=330;j++)
-							 {
-						addrbig[big_cell((i),(j),0)]=0;//b
-						addrbig[big_cell((i),(j),1)]=0;//g
-						addrbig[big_cell((i),(j),2)]=255;//r
-					  }
-					  
-					}
-		  lcd_put_chinese(880,	298, str1,ptBigPic);// 1
+		}
+		lcd_put_chinese(880,  298, str,ptBigPic);// 1
+	}
+	if(file_flag==-1)
+	{
 
+		for(i=810;i<=1010;i++)
+		{
+			for(j=280;j<=330;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
+		}
+		lcd_put_chinese(880,	298, str1,ptBigPic);// 1
+	}
 
-	    }
-	
-	  
-
-	
 
 	//-------------------外部选项重置电子罗盘初始值--------------------------------
 	for(i=810;i<=1010;i++)
+	{
+		for(j=10;j<=60;j++)
 		{
-		  for(j=10;j<=60;j++)
-		  {
 			addrbig[big_cell((i),(j),0)]=0;//b
 			addrbig[big_cell((i),(j),1)]=255;//g
 			addrbig[big_cell((i),(j),2)]=0;//r
-		  }
-		  
 		}
+	}
 	if(x>810&&x<1010&&y>10&&y<60)
 	{
 		first_flag=0;
 		for(i=810;i<=1010;i++)
 		{
-		  for(j=10;j<=60;j++)
-		  {
-			addrbig[big_cell((i),(j),0)]=0;//b
-			addrbig[big_cell((i),(j),1)]=0;//g
-			addrbig[big_cell((i),(j),2)]=255;//r
-		  }
-		  
+			for(j=10;j<=60;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
 		}
 	}
-	
+
 	lcd_put_chinese(880,  28, compass,ptBigPic);// 1
-//----------------------选择低层模式---------------
-   for(i=810;i<=1010;i++)
+	//----------------------选择低层模式---------------
+	for(i=810;i<=1010;i++)
+	{
+		for(j=150;j<=200;j++)
 		{
-		  for(j=150;j<=200;j++)
-		  {
 			addrbig[big_cell((i),(j),0)]=0;//b
 			addrbig[big_cell((i),(j),1)]=255;//g
 			addrbig[big_cell((i),(j),2)]=0;//r
 			if(i==910||i==909||i==911)
-				{
+			{
 				addrbig[big_cell((i),(j),0)]=0;//b
 				addrbig[big_cell((i),(j),1)]=0;//g
 				addrbig[big_cell((i),(j),2)]=0;//r
-			  }
-		  }
-		  
+			}
 		}
-   if(x>810&&x<910&&y>150&&y<200)
-	   {  
-		   for(i=810;i<=910;i++)
-			  {
-				for(j=150;j<=200;j++)
-			 {
-			   addrbig[big_cell((i),(j),0)]=0;//b
-			   addrbig[big_cell((i),(j),1)]=0;//g
-			   addrbig[big_cell((i),(j),2)]=255;//r
-			 }
-			 
-		   }
-	   }
-   if(x>910&&x<1010&&y>150&&y<200)
-		 {	
-	   dlta_d=0;
-	   dlta_a=0;
 
-		 
-			 for(i=910;i<=1010;i++)
-				{
-				  for(j=150;j<=200;j++)
-			   {
-				 addrbig[big_cell((i),(j),0)]=0;//b
-				 addrbig[big_cell((i),(j),1)]=0;//g
-				 addrbig[big_cell((i),(j),2)]=255;//r
-			   }
-			   
-			 }
-		 }
+	}
+	
+	if(x>810&&x<910&&y>150&&y<200)
+	{  
+		for(i=810;i<=910;i++)
+		{
+			for(j=150;j<=200;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
+		}
+	}
+	
+	if(x>910&&x<1010&&y>150&&y<200)
+	{	
+		dlta_d=0;
+		dlta_a=0;
+
+		for(i=910;i<=1010;i++)
+		{
+			for(j=150;j<=200;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
+		}
+	}
 
 
-   
-//------------------线速度增加----------   
-   for(i=840;i<=900;i++)
-		   {
-			 for(j=80;j<=140;j++)
-			 {
-			   addrbig[big_cell((i),(j),0)]=0;//b
-			   addrbig[big_cell((i),(j),1)]=255;//g
-			   addrbig[big_cell((i),(j),2)]=0;//r
-			 }
-			 
-		   }
-   if(x>840&&x<900&&y>80&&y<140)
+	//------------------线速度增加----------   
+	for(i=840;i<=900;i++)
+	{
+		for(j=80;j<=140;j++)
+		{
+			addrbig[big_cell((i),(j),0)]=0;//b
+			addrbig[big_cell((i),(j),1)]=255;//g
+			addrbig[big_cell((i),(j),2)]=0;//r
+		}
+	}
+	
+	if(x>840&&x<900&&y>80&&y<140)
 	{
 		dlta_d=dlta_d+5;
 		for(i=840;i<=900;i++)
-		   {
-			 for(j=80;j<=140;j++)
-		  {
-			addrbig[big_cell((i),(j),0)]=0;//b
-			addrbig[big_cell((i),(j),1)]=0;//g
-			addrbig[big_cell((i),(j),2)]=255;//r
-		  }
-		  
+		{
+			for(j=80;j<=140;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
 		}
 	}
- //------------------线速度减小----------     
-   for(i=840;i<=900;i++)
-		   {
-			 for(j=210;j<=270;j++)
-			 {
-			   addrbig[big_cell((i),(j),0)]=0;//b
-			   addrbig[big_cell((i),(j),1)]=255;//g
-			   addrbig[big_cell((i),(j),2)]=0;//r
-			 }
-			 
-		   }
-   if(x>840&&x<900&&y>210&&y<270)
+	//------------------线速度减小----------     
+	for(i=840;i<=900;i++)
+	{
+		for(j=210;j<=270;j++)
+		{
+			addrbig[big_cell((i),(j),0)]=0;//b
+			addrbig[big_cell((i),(j),1)]=255;//g
+			addrbig[big_cell((i),(j),2)]=0;//r
+		}
+
+	}
+	if(x>840&&x<900&&y>210&&y<270)
 	{
 		dlta_d=dlta_d-5;
 		for(i=840;i<=900;i++)
-		   {
-			 for(j=210;j<=270;j++)
-			 {
-			addrbig[big_cell((i),(j),0)]=0;//b
-			addrbig[big_cell((i),(j),1)]=0;//g
-			addrbig[big_cell((i),(j),2)]=255;//r
-		  }
-		  
+		{
+			for(j=210;j<=270;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
+
 		}
 	}
-   //------------------角速度增加----------   
-   for(i=920;i<=980;i++)
-		   {
-			 for(j=80;j<=140;j++)
-			 {
-			   addrbig[big_cell((i),(j),0)]=0;//b
-			   addrbig[big_cell((i),(j),1)]=255;//g
-			   addrbig[big_cell((i),(j),2)]=0;//r
-			 }
-			 
-		   }
-    if(x>920&&x<980&&y>80&&y<140)
+	//------------------角速度增加----------   
+	for(i=920;i<=980;i++)
+	{
+		for(j=80;j<=140;j++)
+		{
+			addrbig[big_cell((i),(j),0)]=0;//b
+			addrbig[big_cell((i),(j),1)]=255;//g
+			addrbig[big_cell((i),(j),2)]=0;//r
+		}
+
+	}
+	if(x>920&&x<980&&y>80&&y<140)
 	{
 		dlta_a=dlta_a+5;
 		for(i=920;i<=980;i++)
-		   {
-			 for(j=80;j<=140;j++)
-			 {
-			addrbig[big_cell((i),(j),0)]=0;//b
-			addrbig[big_cell((i),(j),1)]=0;//g
-			addrbig[big_cell((i),(j),2)]=255;//r
-		  }
-		  
+		{
+			for(j=80;j<=140;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
+
 		}
 	}
-   //------------------角速度减小----------   
-   for(i=920;i<=980;i++)
-		   {
-			 for(j=210;j<=270;j++)
-			 {
-			   addrbig[big_cell((i),(j),0)]=0;//b
-			   addrbig[big_cell((i),(j),1)]=255;//g
-			   addrbig[big_cell((i),(j),2)]=0;//r
-			 }
-			 
-		   }
-    if(x>920&&x<980&&y>210&&y<270)
+	//------------------角速度减小----------   
+	for(i=920;i<=980;i++)
+	{
+		for(j=210;j<=270;j++)
+		{
+			addrbig[big_cell((i),(j),0)]=0;//b
+			addrbig[big_cell((i),(j),1)]=255;//g
+			addrbig[big_cell((i),(j),2)]=0;//r
+		}
+
+	}
+	if(x>920&&x<980&&y>210&&y<270)
 	{
 		dlta_a=dlta_a-5;
-	 for(i=920;i<=980;i++)
-		   {
-			 for(j=210;j<=270;j++)
-			 {
-			addrbig[big_cell((i),(j),0)]=0;//b
-			addrbig[big_cell((i),(j),1)]=0;//g
-			addrbig[big_cell((i),(j),2)]=255;//r
-		  }
-		  
+		for(i=920;i<=980;i++)
+		{
+			for(j=210;j<=270;j++)
+			{
+				addrbig[big_cell((i),(j),0)]=0;//b
+				addrbig[big_cell((i),(j),1)]=0;//g
+				addrbig[big_cell((i),(j),2)]=255;//r
+			}
+
 		}
 	}
-   //------------------断开----------   
-  
+	//------------------断开----------   
 
- //----------------------------------------------------  
-	
 
-//-----------------------------------------------------
+	//----------------------------------------------------  
+
+
+	//-----------------------------------------------------
 
 }
+
+//-------------------------------------------------------------------------------
+
+
+//---------------------该函数用于描述目标物--------------------
 void point_get(int x,int y,PT_PixelDatas ptSmallPic, PT_PixelDatas ptBigPic)
 {
+//---------------这里的ptSmallPic用于转换后的界面图像----------
+//---------------ptBigPic用于显示触屏可控制的界面图像---------
 	unsigned char str[] = "采样点";
-	
+
 	int i=0;
 	int j=0;
 	int show_i=0;
-	int xx=0,yy=0;	 
+	int xx=0,yy=0;	
+	int pic_x=0,pic_y=0;
 
- unsigned char *addrsmall;
- unsigned char *addrbig;
+	unsigned char *addrsmall;
+	unsigned char *addrbig;
 
- static int get_x=0;
- static int get_y=0;
+	static int get_x=0;
+	static int get_y=0;
 
- addrsmall=ptSmallPic->aucPixelDatas;
- addrbig=ptBigPic->aucPixelDatas;
+	addrsmall=ptSmallPic->aucPixelDatas;
+	addrbig=ptBigPic->aucPixelDatas;
 
 
-//---------------------小移动----------------------
-   for(i=700;i<=750;i++)
-   	{
-	  for(j=10;j<=60;j++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
-	  }
-	  for(j=110;j<=160;j++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
-	 }
-   	}
-   for(j=60;j<=110;j++)
-   	{
-	  for(i=650;i<=700;i++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
-	  }
-	  for(i=750;i<=799;i++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
-	 }
-   	}
-
-if(x>700&&x<750&&y>10&&y<60) 
-	{
-	 get_y--;
-	 for(i=700;i<=750;i++)
-   	{
-	  for(j=10;j<=60;j++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
-	  }
-	 	}
-	}
-if(x>700&&x<750&&y>110&&y<160) 
-	{
-	get_y++;
+	//---------------------小移动----------------------------
 	for(i=700;i<=750;i++)
-   	{
-	  
-	  for(j=110;j<=160;j++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
-	 }
-   	}
-	}
-if(x>650&&x<700&&y>60&&y<110)
 	{
-	get_x--;
-	 for(j=60;j<=110;j++)
-   	{
-	  for(i=650;i<=700;i++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
-	  }
-	 
-   	}
-	}
-if(x>750&&x<799&&y>60&&y<110) 
-	{
-	get_x++;
-	 for(j=60;j<=110;j++)
-   	{
-	 
-	  for(i=750;i<=799;i++)
-	  {
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
-	 }
-   	}
-	}
-
-if(x<798&&y<598&&x>2&&y>2)
-
-{
-    for(i=x-1;i<=x+1;i++)
-	  for(j=y-1;j<=y+1;j++)
-	  {
-	    
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
-		if(i==x&&j==y)
-			{
+		for(j=10;j<=60;j++)
+		{
 			addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
 			addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-			addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
-		     }
-	  }
-}
-
-
-
-//---------------------小移动相关操作-------------
-//----------------------采样点---------------------
-	 lcd_put_chinese(16,  616, str,ptBigPic);
-	
-
-	 
-   if(x<598&&y<598&&x>2&&y>2)
-	  	{
-         get_x=x;get_y=y;
-	    }
-  if(get_x<598&&get_y<598&&get_x>2&&get_y>2)
-  	{
-	
-	  //--------------------------采样部分--------------------------
-	  
-	  for(i=get_x-1;i<=get_x+1;i++)
-	  for(j=get_y-1;j<=get_y+1;j++)
-	  {
-	   get_point1.b+=addrsmall[cell((i-cir_x),(cir_y-j),0)];
-	   get_point1.g+=addrsmall[cell((i-cir_x),(cir_y-j),1)];
-	   get_point1.r+=addrsmall[cell((i-cir_x),(cir_y-j),2)];
-		  
-		addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
-		addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-		addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
-		if(i==x&&j==y)
-			{
+			addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
+		}
+		for(j=110;j<=160;j++)
+		{
 			addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
 			addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
-			addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
-		     }
-	  }
-	  
-	  //------------------------------------------------------
-		  
-		  get_point1.b=get_point1.b/9;
-		  get_point1.g=get_point1.g/9;
-		  get_point1.r=get_point1.r/9;
-		 
-		  
+			addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
+		}
+	}
+	
+	for(j=60;j<=110;j++)
+	{
+		for(i=650;i<=700;i++)
+		{
+			addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+			addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
+			addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
+		}
+		for(i=750;i<=799;i++)
+		{
+			addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+			addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
+			addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
+		}
+	}
+
+	if(x>700&&x<750&&y>10&&y<60) 
+	{
+		get_y--;
+		for(i=700;i<=750;i++)
+		{
+			for(j=10;j<=60;j++)
+			{
+				addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+				addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
+				addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
+			}
+		}
+	}
+	
+	if(x>700&&x<750&&y>110&&y<160) 
+	{
+		get_y++;
+		for(i=700;i<=750;i++)
+		{
+
+			for(j=110;j<=160;j++)
+			{
+				addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+				addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
+				addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
+			}
+		}
+	}
+	
+	if(x>650&&x<700&&y>60&&y<110)
+	{
+		get_x--;
+		for(j=60;j<=110;j++)
+		{
+			for(i=650;i<=700;i++)
+			{
+				addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+				addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
+				addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
+			}
+
+		}
+	}
+	
+	if(x>750&&x<799&&y>60&&y<110) 
+	{
+		get_x++;
+		for(j=60;j<=110;j++)
+		{
+
+			for(i=750;i<=799;i++)
+			{
+				addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+				addrsmall[cell((i-cir_x),(cir_y-j),1)]=255;//g
+				addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
+			}
+		}
+	}
+
+	if(x<798&&y<598&&x>2&&y>2)
+
+	{
+		for(i=x-1;i<=x+1;i++)
+			for(j=y-1;j<=y+1;j++)
+			{
+
+				addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+				addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
+				addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
+				if(i==x&&j==y)
+				{
+					addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+					addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
+					addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
+				}
+			}
+	}
+
+
+	//---------------------小移动相关操作-------------
+	//----------------------采样点---------------------
+	lcd_put_chinese(16,  616, str,ptBigPic);
+
+	if(x<598&&y<598&&x>2&&y>2)
+	{
+		get_x=x;get_y=y;
+	}
+	if(get_x<598&&get_y<598&&get_x>2&&get_y>2)
+	{
+
+		//--------------------------采样部分--------------------------
+
+		for(i=get_x-1;i<=get_x+1;i++)
+		for(j=get_y-1;j<=get_y+1;j++)
+		{
+			get_point1.b+=addrsmall[cell((i-cir_x),(cir_y-j),0)];
+			get_point1.g+=addrsmall[cell((i-cir_x),(cir_y-j),1)];
+			get_point1.r+=addrsmall[cell((i-cir_x),(cir_y-j),2)];
+
+			addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+			addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
+			addrsmall[cell((i-cir_x),(cir_y-j),2)]=255;//r
+			if(i==x&&j==y)
+			{
+				addrsmall[cell((i-cir_x),(cir_y-j),0)]=0;//b
+				addrsmall[cell((i-cir_x),(cir_y-j),1)]=0;//g
+				addrsmall[cell((i-cir_x),(cir_y-j),2)]=0;//r
+			}
+		}
+
+		//------------------------------------------------------
+
+		get_point1.b=get_point1.b/9;
+		get_point1.g=get_point1.g/9;
+		get_point1.r=get_point1.r/9;
+
+		write_num(16,680 ,get_point1.b,ptBigPic);
+		write_num(16,696 ,get_point1.g,ptBigPic);
+		write_num(16,712 ,get_point1.r,ptBigPic);
+
+		//DBG_PRINTF("b=%d g=%d r=%d\n", get_point_b,get_point_g,get_point_r);
+		get_point1.b=0;
+		get_point1.g=0;
+		get_point1.r=0;
+
+		write_num(16,648 ,get_x,ptBigPic);
+		write_num(16,664 ,get_y,ptBigPic);
+
+		// addrsmall[cell((cir_x-10),(cir_y-10),0)]=0;
+		// addrsmall[cell((cir_x-10),(cir_y-10),1)]=0;
+		// addrsmall[cell((cir_x-10),(cir_y-10),2)]=255;
+
+	}
+
+	for(show_i=0;show_i<robot_temp[0].count;show_i++)
+	{
+		xx=show_x[show_i];
+		yy=show_y[show_i];
 		
-		  
-		  write_num(16,680 ,get_point1.b,ptBigPic);
-		  write_num(16,696 ,get_point1.g,ptBigPic);
-		  write_num(16,712 ,get_point1.r,ptBigPic);
-		 
-		  
-		  
-		  
-		  //DBG_PRINTF("b=%d g=%d r=%d\n", get_point_b,get_point_g,get_point_r);
-		  get_point1.b=0;
-		  get_point1.g=0;
-		  get_point1.r=0;
-		 
-	    write_num(16,648 ,get_x,ptBigPic);
-	    write_num(16,664 ,get_y,ptBigPic);
-	  
-
-	     // addrsmall[cell((cir_x-10),(cir_y-10),0)]=0;
-		 // addrsmall[cell((cir_x-10),(cir_y-10),1)]=0;
-		 // addrsmall[cell((cir_x-10),(cir_y-10),2)]=255;
-
-    }
- for(show_i=0;show_i<robot_temp[0].count;show_i++)
-	  {
-		  xx=show_x[show_i];
-		  yy=show_y[show_i];
-		  
-		 addrsmall[cell(xx,yy,0)]=0;//b
-		 addrsmall[cell(xx,yy,1)]=0;//g
-		 addrsmall[cell(xx,yy,2)]=0;//r
-	  
-	  }
+//---------------显示归类后的目标汇聚的所有目标点集合---------
+		addrsmall[cell(xx,yy,0)]=0;//b
+		addrsmall[cell(xx,yy,1)]=0;//g
+		addrsmall[cell(xx,yy,2)]=0;//r
+	}
 
 
+	int d111=0;
+	
+	for(show_i=0;show_i<FinalEdgePicCnt;show_i++)
+	{		
+		for(d111=-3;d111<3;d111++)
+		{					
+			pic_y=showedge_y[show_i]+d111;
+			pic_x=showedge_x[show_i];
+				
+			addrsmall[cell(pic_x,pic_y,0)]=0;//b
+			addrsmall[cell(pic_x,pic_y,1)]=0;//g
+			addrsmall[cell(pic_x,pic_y,2)]=255;//r
+		}
+	}
+
+	FinalEdgePicCnt=0;
+	PicEdgePixCnt=0;
+	memset(PicEdgePix,0,1024);
+	memset(PicEdgeAngle,0,1024);
+	
 }
+
+
+
+#endif /* _SHOW_H */
 
