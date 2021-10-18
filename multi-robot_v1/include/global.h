@@ -45,15 +45,15 @@
 //#define cir_y  300
 
 
-#define ROBOT_WIDTH	40    //单位厘米
+#define ROBOT_WIDTH	40    //闁告娲戠紞鍛村储濡壈鍎�
 
-#define  delta_l      		20	//步长设置为20cm
+#define  delta_l      		20	//婵縿鍎甸弳杈╂媼閸撗呮瀭濞戞搫鎷�20cm
 
 #define ROLLWINDOW_R	1000.0
 
 #define	 TrackNodeNum	20
-int dlta_d ;		  //线速度，如 dlta_d = 100 表示100mm/s 【控制机器人前进后退（正数前进，负数后退）】
-int dlta_a ;		  //角速度，如 dlta_a = 100 表示100rad/s【控制机器人左转右转（正数左转，负数右转）】
+int dlta_d ;		  //缂佹儳娼￠埀顒傚枎鐎规娊鏁嶇仦绛嬫搐 dlta_d = 100 閻炴稏鍔庨妵锟�100mm/s 闁靛棙鍔栫敮鍫曞礆閼稿灚绨氶柛锝冨妺濮瑰宕滃鍫㈢闁告艾閰ｉ埀顑藉亾闁挎稑鐗婇婊堝极閺夊灝顤呴弶鈺傚喕缁辨繄鎷归悢鍛婃闁告艾閰ｉ埀顑藉亾闁挎稑顦埀顒婃嫹
+int dlta_a ;		  //閻熸瑦甯￠埀顒傚枎鐎规娊鏁嶇仦绛嬫搐 dlta_a = 100 閻炴稏鍔庨妵锟�100rad/s闁靛棙鍔栫敮鍫曞礆閼稿灚绨氶柛锝冨妺濮瑰顔忛敃浣圭ギ闁告瑥鐤囧ù鍡涙晬閸噥鍔€闁轰焦婢樻稊蹇旀姜椤掑﹦绀夐悹鎰枑閺嗙喖宕ｇ€圭姵绁柨娑橆槶閳ь剨鎷�
 
 int get_x;
 int get_y;
@@ -61,7 +61,7 @@ int get_tht;
 int cir_x;
 int cir_y;
 #define cell(x, y, d) (4 * (x)-3200 * (y) + cir_x * 4 + 3200 * cir_y + d)
-#define DAY 2 // 1白天  0 黑夜荧光灯照明 2 自适应属于硬件配置addr[ii*3200+jj*4+0]
+#define DAY 2 // 1闁谎嗘閵囷拷  0 濮掓稒鍨甸¨渚€鎳¤閸樻粓鎮橀婊冨季闁哄嫸鎷� 2 闁煎浜埀顒€鍊哥花鑼沪閻愭壆鑹剧痪顓у厸濞嗐垽鏌婂鍥╂瀭addr[ii*3200+jj*4+0]
 #define big_cell(x, y, d) (4 * (x) + 4096 * (y) + d)
 
 struct get_point
@@ -74,16 +74,15 @@ struct get_point
 struct ekf
 {
 	int i;
-	const double pi;
 	Matrix A;
 	Matrix H;
-	Matrix X;  //后验估计（最优修正值，最终要的就是这个）
-	Matrix X_; //先验估计
+	Matrix X;  //闁告艾閰ｉ悰娆愬閹峰矈鍚€闁挎稑鐗婂〒鑸靛濡鍙忔慨婵撶到閳ь剛銆嬬槐婵嬪嫉閳ь剛绱掗崼锝庢矗闁汇劌瀚銊╁及椤栨繄绠瑰☉鎿冧悍缁憋拷
+	Matrix X_; //闁稿繐鐗撻悰娆愬閹峰矈鍚€
 	Matrix P;
 	Matrix P_;
 	Matrix K;
 	Matrix K_;
-	Matrix Z; //观测值
+	Matrix Z; //閻熸瑥鍊圭粊鎾磹閿燂拷
 	Matrix K__;
 	Matrix Q;
 	Matrix R;
@@ -95,50 +94,50 @@ struct ekf
 	double Zvalue[2];
 	double Rvalue[4];
 	double Qvalue[4];
-	double tht; //存本机与目标的电子罗盘航向角角度差？？？
+	double tht; //閻庢稒蓱濠€浼村嫉鏉炴壆鐟㈤柣鈺婂枟閻栵綁鎯冮崟顓熸毄閻庢稒鍔楃紞蹇涙儎濡灝鐒婚柛姘灱椤鎲撮幒鎴濐唺鐎瑰壊鍣槐鐢告晬閻曞倻鍚�
 	double old_tht1;
-	double tht2; //存本机与目标的电子罗盘航向角角度差？？？
+	double tht2; //閻庢稒蓱濠€浼村嫉鏉炴壆鐟㈤柣鈺婂枟閻栵綁鎯冮崟顓熸毄閻庢稒鍔楃紞蹇涙儎濡灝鐒婚柛姘灱椤鎲撮幒鎴濐唺鐎瑰壊鍣槐鐢告晬閻曞倻鍚�
 
 	int tht3;
-	int tht4; //目标机器人航位推算的角度（目标的偏转角）
+	int tht4; //闁烩晩鍠楅悥锝夊嫉閸濆嫭鐝ゅù婊堢細閸╁懏鎷呭鍡楄吂缂佺姵顨堝▓鎴犳喆閹烘垵顔婇柨娑樼墢濞蹭即寮介崶鈺傜暠闁稿绻楀ù鍡欐喆閹虹偟绀�
 	int tht5;
 
 	int tht6;
 	int tht7;
-	int tht8; //本机航位推算的角度（本机的偏转角）
+	int tht8; //闁哄牜鍓氬┃鈧柤鍓蹭簷缂嶅懘骞掗妸褏鏆柣銊ュ椤鎯旈敂鑲╃闁哄牜鍓氬┃鈧柣銊ュ娴滃憡娼鍐炬健闁挎冻鎷�
 
 	int x1;
-	int x2; //本机航位推算的x值
+	int x2; //闁哄牜鍓氬┃鈧柤鍓蹭簷缂嶅懘骞掗妸褏鏆柣銊ュⅰ闁稿⿵鎷�
 	int x3;
 	int y1;
-	int y2; //本机航位推算的y值
+	int y2; //闁哄牜鍓氬┃鈧柤鍓蹭簷缂嶅懘骞掗妸褏鏆柣銊ュⅱ闁稿⿵鎷�
 	int y3;
-	int distance; //本机航位推算的移动距离（本机的前进距离）
+	int distance; //闁哄牜鍓氬┃鈧柤鍓蹭簷缂嶅懘骞掗妸褏鏆柣銊ュ浜涢柛鏂诲姀缁愭稓绮嬫导娆戠闁哄牜鍓氬┃鈧柣銊ュ婢х姵娼诲☉婊呯崺缂佸倷绱槐锟�
 
 	int x4;
-	int x5; //目标机器人航位推算的x值
+	int x5; //闁烩晩鍠楅悥锝夊嫉閸濆嫭鐝ゅù婊堢細閸╁懏鎷呭鍡楄吂缂佺姵顨堝▓鎲嶉柛濠忔嫹
 	int x6;
 	int y4;
-	int y5; //目标机器人航位推算的y值
+	int y5; //闁烩晩鍠楅悥锝夊嫉閸濆嫭鐝ゅù婊堢細閸╁懏鎷呭鍡楄吂缂佺姵顨堝▓鎲忛柛濠忔嫹
 	int y6;
-	int distance1; //目标机器人航位推算的的移动距离（目标机器人的前进距离）
+	int distance1; //闁烩晩鍠楅悥锝夊嫉閸濆嫭鐝ゅù婊堢細閸╁懏鎷呭鍡楄吂缂佺姵顨堝▓鎴︽儍閸曨厜鈺呭礉閵娿劎鐛╃紒鍌欑串缁辨瑩鎯勯鐣屽灱闁哄牆鎼▍鎺撶閾忚鐣遍柛鎾崇Х缁绘鎹勫┑鍫€查柨娑虫嫹
 
 	int count;
 } ekf[4];
 
 struct robot
 {
-	unsigned int rad;	//radius半径（表示观测机器人所成全景图像中，与目标机器人之间的像素个数）
-	int angle;			//本机全景图像观测到目标机器人的观测角度
-	unsigned int count; //全景图像中的特征（像素）点个数
+	unsigned int rad;	//radius闁告锕ょ欢鐐烘晬閸絻鈧啰绮堟ウ娆炬綆婵炴潙顑嗗┃鈧柛锝冨妺濮瑰骞嶉埀顒勫箣閹邦剙寮块柡鍜佸灠濞存﹢宕撹箛搴ゅ幀闁挎稑濂旂粭宀勬儎椤旂晫鍨奸柡鍫濇惈濞呮帗绂嶆潪鎵吅闂傚倸顕▓鎴﹀磽韫囨洜顦卞☉鎿冧簼閺嗙喖鏁嶉敓锟�
+	int angle;			//闁哄牜鍓氬┃鈧柛蹇嬪妽濞呮瑩宕堕幆褍鍓奸悷娆忓€圭粊鎾礆閹殿喗绐楅柡宥呮处濠р偓闁革絻鍔嬪Ч澶愭儍閸曨噮娼庢繛鏉戭儓椤鎯旈敓锟�
+	unsigned int count; //闁稿繈鍔嶅▍娆撳炊閹冨壖濞戞搩鍘惧▓鎴︽偋閻熸壆绐欓柨娑樼墕閸庢氨妲愰悪鍛闁绘劙鈧盯鍤嬮柡渚婃嫹
 	int x;
 	int y;
-	int distance; //本机全景图像观测到目标机器人的观测距离
+	int distance; //闁哄牜鍓氬┃鈧柛蹇嬪妽濞呮瑩宕堕幆褍鍓奸悷娆忓€圭粊鎾礆閹殿喗绐楅柡宥呮处濠р偓闁革絻鍔嬪Ч澶愭儍閸曨噮娼庢繛鏉戭儓缁愭稓绮嬮敓锟�
 	float dis_diff;
 	int number;
-	int dlta_a;	  //目标机器人（发过来的）角速度
-	int dlta_d;	  //目标机器人（发过来的）线速度
-	int Ture_Tht; //存本机与目标的电子罗盘航向角角度差？？？
+	int dlta_a;	  //闁烩晩鍠楅悥锝夊嫉閸濆嫭鐝ゅù婊呭皑缁辨瑩宕ｉ幋锝囩畺闁哄鍎冲▓鎴︽晬婢跺寒娼￠梺顐ゅ枎鐎癸拷
+	int dlta_d;	  //闁烩晩鍠楅悥锝夊嫉閸濆嫭鐝ゅù婊呭皑缁辨瑩宕ｉ幋锝囩畺闁哄鍎冲▓鎴︽晬婢跺苯娈犻梺顐ゅ枎鐎癸拷
+	int Ture_Tht; //閻庢稒蓱濠€浼村嫉鏉炴壆鐟㈤柣鈺婂枟閻栵綁鎯冮崟顓熸毄閻庢稒鍔楃紞蹇涙儎濡灝鐒婚柛姘灱椤鎲撮幒鎴濐唺鐎瑰壊鍣槐鐢告晬閻曞倻鍚�
 } robot_temp[7], robot_end[7], robot_send[7], robot_rece[7], robot_ekf[7], robot_ekf2[7], robot_self[7];
 struct ekf_send
 {
@@ -159,9 +158,9 @@ PT_VideoBuf ptVideoBufCur_now;	//
 T_VideoBuf tVideoBuf_now;		//
 T_VideoBuf tFrameBuf_now;		//
 
-int Ture_Tht;	 //电子罗盘航向角，磁北方向始（沿顺时针）到当前方向止的夹角（当罗盘水平旋转的时候，航向角在0—360度之间变化）
-int First_Angle; //记录本机器人初始的航向角角度
-int first_flag;	 //为配合 First_Angle 设置的标志位
+int Ture_Tht;	 //闁汇垽娼ч悺娆戠磾濡ゅ啯纾搁柤鍓蹭簻閹粎鎲撮幒鐐电缁惧彞绀佺€垫娊寮悷鐗堝€诲┑顔碱儜缁辨瑥鈻介崸妞尖偓搴ㄥ籍閸洘瀚涢柨娑橆槸閸╁矁銇愰幘鍐差枀闁哄倻鎳撻幃婊冾潰閵忋垺鐣卞鍓侇攰椤鏁嶉崼婵堢Ъ缂傚啯顨堝ú蹇擃潩閺夋垿鎸柡鍐儓濞村棝鎯冮崟顒侇槯闁稿﹥鐟辩槐婵嬫嚋椤忓嫭鍊婚悷娆愬笒濠€锟�0闁炽儻鎷�360閹艰揪缂氱粻锝夋⒒閺夋垵缍侀柛鏍ㄧ壄缁憋拷
+int First_Angle; //閻犱焦婢樼紞宥夊嫉椤掍焦绨氶柛锝冨妺濮瑰宕氬┑鍡╂綏闁汇劌瀚崺鍛村触閹达綆娼￠悷娆愬笒鐎癸拷
+int first_flag;	 //濞戞挻妞介崢銈夊触閿燂拷 First_Angle 閻犱礁澧介悿鍡涙儍閸曨剛鍨奸煫鍥ㄣ仦缂嶏拷
 int file_flag;
 float CurLidarDist;
 int CurLidarQuality;
@@ -171,12 +170,12 @@ float CurLidarAng2;
 
 int AimCount;
 int CurLidarDistPix[1024];
-int CurLidarAng[1024];		//lidar每个采样点的角度值
-int CurLidarDistance[1024]; //lidar每个采样点的距离值
+int CurLidarAng[1024];		//lidar婵絽绻嬮柌婊堟煂閸ャ劎澹夐柣鎰贡濞堟垹鎲撮幒鎴濐唺闁稿⿵鎷�
+int CurLidarDistance[1024]; //lidar婵絽绻嬮柌婊堟煂閸ャ劎澹夐柣鎰贡濞堟垹鎹勫┑鍫€查柛濠忔嫹
 
 int TrueAimCount;
 int TrueCurLidarAng[2000];
-int TrueCurLidarDistPix[2000];	//�����ڻ���ͼ��
+int TrueCurLidarDistPix[2000];	//闁跨喐鏋婚幏鐑芥晸閺傘倖瀚归柨鐔诲Ν娴兼瑦瀚归柨鐔告灮閹峰嘲娴橀柨鐔告灮閹凤拷
 
 int TrueAimCntDis;
 int TrueCurLidarAngle[2000];
@@ -287,11 +286,11 @@ struct timer
 
 
 
-/* 将 客户端地址结构 和 服务器连接套接字描述符 绑定在一起，一一对应 */
+/* 閻忓骏鎷� 閻庡箍鍨洪崺娑氱博椤栨碍鍕鹃柛褉鍋撶紓浣规尰閻庯拷 闁告粣鎷� 闁哄牆绉存慨鐔煎闯閵娿劎绠鹃柟鎭掑劚椤ㄦ粓骞掗妷銉ф憻闁硅绻楅崼顏嗙箔閿燂拷 缂備焦鍨甸悾楣冨捶閵娿倗顏遍悹褍鍤栫槐婵囩▔閳ь剚绋夐埀顒傗偓鐢垫嚀缁拷 */
 typedef struct net_receive
 {
-	int iSocketClient; //服务器连接套接字描述符
-	unsigned char *ip; //客户端地址结构IP
+	int iSocketClient; //闁哄牆绉存慨鐔煎闯閵娿劎绠鹃柟鎭掑劚椤ㄦ粓骞掗妷銉ф憻闁硅绻楅崼顏嗙箔閿燂拷
+	unsigned char *ip; //閻庡箍鍨洪崺娑氱博椤栨碍鍕鹃柛褉鍋撶紓浣规尰閻庣枠P
 } t_net_rec, *pt_net_rec;
 
  typedef struct

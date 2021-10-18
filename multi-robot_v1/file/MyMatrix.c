@@ -456,10 +456,10 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 					//printf("ekf[a].tht = %lf\n", ekf[a].tht);
 					if (atoi(substr(local_ip, 12, 1)) == 1)
 					{
-						switch (atoi(substr(src.local_ip, 13, 1)))
+						switch (atoi(substr(src.local_ip, 12, 1)))
 						{
 						case 4:
-							robot_ekf2[1].number = atoi(substr(src.local_ip, 13, 1));
+							robot_ekf2[1].number = atoi(substr(src.local_ip, 12, 1));
 							robot_ekf2[1].angle = robot_ekf[i].angle;
 							robot_ekf2[1].distance = robot_ekf[i].distance;
 							robot_ekf2[1].dlta_d = src.dlta_d;
@@ -471,7 +471,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_end[1].number = 1;
 							break;
 						case 6:
-							robot_ekf2[2].number = atoi(substr(src.local_ip, 13, 1));
+							robot_ekf2[2].number = atoi(substr(src.local_ip, 12, 1));
 							robot_ekf2[2].angle = robot_ekf[i].angle;
 							robot_ekf2[2].distance = robot_ekf[i].distance;
 							robot_ekf2[2].dlta_d = src.dlta_d;
@@ -488,11 +488,11 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 					}
 					if (atoi(substr(local_ip, 12, 1)) == 4)
 					{
-						switch (atoi(substr(src.local_ip, 13, 1)))
+						switch (atoi(substr(src.local_ip, 12, 1)))
 						{
 
 						case 1:
-							robot_ekf2[1].number = atoi(substr(src.local_ip, 13, 1));
+							robot_ekf2[1].number = atoi(substr(src.local_ip, 12, 1));
 							robot_ekf2[1].angle = robot_ekf[i].angle;
 							robot_ekf2[1].distance = robot_ekf[i].distance;
 							robot_ekf2[1].dlta_d = src.dlta_d;
@@ -504,7 +504,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_end[1].number = 1;
 							break;
 						case 6:
-							robot_ekf2[2].number = atoi(substr(src.local_ip, 13, 1));
+							robot_ekf2[2].number = atoi(substr(src.local_ip, 12, 1));
 							robot_ekf2[2].angle = robot_ekf[i].angle;
 							robot_ekf2[2].distance = robot_ekf[i].distance;
 							robot_ekf2[2].dlta_d = src.dlta_d;
@@ -521,10 +521,10 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 					}
 					if (atoi(substr(local_ip, 12, 1)) == 6)
 					{
-						switch (atoi(substr(src.local_ip, 13, 1)))
+						switch (atoi(substr(src.local_ip, 12, 1)))
 						{
 						case 1:
-							robot_ekf2[1].number = atoi(substr(src.local_ip, 13, 1));
+							robot_ekf2[1].number = atoi(substr(src.local_ip, 12, 1));
 							robot_ekf2[1].angle = robot_ekf[i].angle;
 							robot_ekf2[1].distance = robot_ekf[i].distance;
 							robot_ekf2[1].dlta_d = src.dlta_d;
@@ -536,7 +536,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_end[1].number = 1;
 							break;
 						case 4:
-							robot_ekf2[2].number = atoi(substr(src.local_ip, 13, 1));
+							robot_ekf2[2].number = atoi(substr(src.local_ip, 12, 1));
 							robot_ekf2[2].angle = robot_ekf[i].angle;
 							robot_ekf2[2].distance = robot_ekf[i].distance;
 							robot_ekf2[2].dlta_d = src.dlta_d;
@@ -554,6 +554,37 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 				}
 			}
 		}
+	}
+}
+
+void math_Dis_Ang_204(int a)
+{
+	//向左转激光雷达角度会增加
+	if (a == 4)
+	{
+		float dis = 0;
+		float tht = 0;
+		int to_Visual_angle;
+		/* ******to_Visual_angle：本机到leader再到目标点形成的角度************ */
+		to_Visual_angle = abs(90 * 10 - visual_Ang_204 * 10 - robot_ekf2[1].angle - robot_ekf2[1].Ture_Tht * 10);
+		dis = pow(visual_Dis_204, 2) + pow(robot_ekf2[1].distance, 2) -
+			  2 * visual_Dis_204 * robot_ekf2[1].distance * cos(to_Visual_angle * pi / 1800);
+		dis = sqrt(dis);
+		tht = (pow(dis, 2) + pow(visual_Dis_204, 2) - visual_Dis_204 * visual_Dis_204) /
+			  (2 * dis * robot_ekf2[1].distance);
+		if (tht > 1)
+			tht = 1;
+		else if (tht < -1)
+			tht = -1;
+		tht = acos(tht) * 180 / pi;
+		/**************本机观测leader所得到的角度********************/
+		//printf("robot_ekf2[1].angle / 10 = %d\n", robot_ekf2[1].angle / 10);
+		/*********leader到本机再到目标点所形成的夹角******************/
+		//printf("tht =%f\n", tht);
+		/******本机与leader之间的角度差，本机左转时会增大，leader左转时会减小********* */
+		//printf("robot_ekf2[1].Ture_Tht = %d\n", robot_ekf2[1].Ture_Tht);
+		tht = abs(90 - robot_ekf2[1].angle / 10) + tht - robot_ekf2[1].Ture_Tht;
+		printf("dis = %f,tht = %f\n", dis, tht);
 	}
 }
 

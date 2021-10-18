@@ -6,6 +6,9 @@
  *  * 慎用创建矩阵这个函数，在调用之后要想办法free掉
  *　* LU分解求逆不太熟
  */
+#define visual_Dis_204 100
+#define visual_Ang_204 60
+#define pi 3.141592
 
 typedef struct MNode *PtrToMNode;
 typedef struct MNode
@@ -76,6 +79,8 @@ char *substr(char src[], int start, int len);
 //比较排序
 //void sortLinker(int count);
 void assignMent(struct My_msg src, int count, int a, char *local_ip);
+//这个函数用于寻找虚拟机器人在本机局部坐标系下的距离和角度
+void math_Dis_Ang_204(int a);
 void InitEkf(int a);
 //秒级定时器
 void seconds_sleep(unsigned seconds);

@@ -1,6 +1,3 @@
-
-//try to believe yourself
-//123234
 #include <way.h>
 #include <show.h>
 #include "io.h"
@@ -216,6 +213,10 @@ void ControlFun(void)
 	static float vc = 0.1;
 	float w_omiga = 0.0;
 
+	float x0, y0 = 0;
+	float x1 = 1, y1 = 1;
+	float x2 = 2, y2 = 2;
+
 	float x_p = 0.0, y_p = 0.0;				  //期望路径
 	float x_p_der = 0.0, y_p_der = 0.0;		  //期望路径一阶导
 	float x_p_derder = 0.0, y_p_derder = 0.0; //期望路径二阶导
@@ -329,16 +330,26 @@ void ControlFun(void)
 		//*****注意:跟踪直线有方向区别*********//
 		//**********直线轨迹y = x  第一象限**********************//
 
-		x_p = w;
+		/* 		x_p = w;
 		y_p = w;
 
 		x_p_der = 1;
 		y_p_der = 1;
 
 		x_p_derder = 0;
-		y_p_derder = 0;
+		y_p_derder = 0; */
 
 		//**********直线轨迹y = x  第一象限**********************//
+
+		/* ***********一次贝塞尔曲线*************************** */
+		x_p = (1 - w) * x0 + w * x1;
+		y_p = (1 - w) * y0 + w * y1;
+
+		x_p_der = -x0 + x1;
+		y_p_der = -y0 + y1;
+
+		x_p_derder = 0;
+		y_p_derder = 0;
 
 		//********** 对称三阶贝塞尔曲线轨迹**********************//
 		/*
@@ -625,7 +636,7 @@ int main(int argc, char **argv)
 
 	DBG_PRINTF("x %d\n", tFrameBuf_main.tPixelDatas.iWidth);  //800
 	DBG_PRINTF("y %d\n", tFrameBuf_main.tPixelDatas.iHeight); //600
-	//----------------------------
+															  //----------------------------
 
 	//===系统定时器======//
 
@@ -690,12 +701,12 @@ int main(int argc, char **argv)
 		//--工程运行开始复位底层航位推算值---
 
 		//--------------------------------------------------
-
+		frame_send.data[5] = 0;
+		nbytes = write(can_fd, &frame_send, sizeof(frame_send));
 		addr_len = sizeof(addr);
 		len = 0;
 		/*接收 CAN 数据，注意第六个参数len是传入传出参数*/
 		nbytes = recvfrom(s, &frame_rev, sizeof(struct can_frame), 0, (struct sockaddr *)&addr, &len);
-
 		ifr.ifr_ifindex = addr.can_ifindex;
 		ioctl(s, SIOCGIFNAME, &ifr);
 		/* n*256 即 n<<8 */
@@ -1573,7 +1584,6 @@ void *ekf_algorithm(void *arg)
 	local_ip = GetLocalIp();
 	//init_sigaction();
 	//init_time();
-	double pi = 3.141592;
 	int i;
 	struct timeval ekf_timeval;
 	while (1)
@@ -1593,6 +1603,7 @@ void *ekf_algorithm(void *arg)
 		//pthread_rwlock_unlock(&rwlock);
 		//pthread_mutex_unlock(&global.db);
 		assignMent(ekfRecvBuf[a], robot_end[1].count, a, local_ip);
+		math_Dis_Ang_204(atoi(substr(local_ip, 12, 1)));
 		//本机观测目标的观测距离			//本机观测目标的观测角度
 		ekf[a].Zvalue[0] = (double)robot_ekf2[a].distance * cos(robot_ekf2[a].angle * pi / 1800.0);
 		ekf[a].Zvalue[1] = (double)robot_ekf2[a].distance * sin(robot_ekf2[a].angle * pi / 1800.0);
@@ -1602,7 +1613,7 @@ void *ekf_algorithm(void *arg)
 		{
 			SetData_Matrix(ekf[a].X, ekf[a].Zvalue); //赋初值
 		}
-		if (robot_end[a].number)
+		//if (robot_end[a].number)
 		{
 			ekf[a].tht2 = robot_ekf2[a].Ture_Tht;
 			//printf("与%d号机器人之间的角度为 %f\n", robot_ekf2[a].number, ekf[a].tht2);
@@ -1739,8 +1750,8 @@ void *ekf_algorithm(void *arg)
 			printf("robot[%d] X1 = %f  ,X_1 = %f  Z1 = %f\n", robot_ekf2[a].number, PickInMat(ekf[a].X, 1, 1), PickInMat(ekf[a].X_, 1, 1), PickInMat(ekf[a].Z, 1, 1));
 			//打印目标机器人在本机坐标系下的y值									 //后验估计（最优估计值）		//先验估计					 //观测值
 			printf("robot[%d] X2 = %f  ,X_2 = %f  Z2 = %f\n", robot_ekf2[a].number, PickInMat(ekf[a].X, 2, 1), PickInMat(ekf[a].X_, 2, 1), PickInMat(ekf[a].Z, 2, 1));
-			robot_end[a].number = 0;
-			robot_ekf[a].number = 1; //线程 robotRuning 中的标志位
+			//robot_end[a].number = 0;
+			//robot_ekf[a].number = 1; //线程 robotRuning 中的标志位
 		}
 		printf("\n");
 		printf("\n");
@@ -1850,8 +1861,8 @@ void *ekf_multi(void *arg)
 	//pthread_t robotRun1;
 	//pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
 	//}
-	pthread_t robotRun;
-	pthread_create(&robotRun, NULL, robotRuning1, NULL); //该线程用于记录
+	//pthread_t robotRun;
+	//	pthread_create(&robotRun, NULL, robotRuning1, NULL); //该线程用于记录
 	if (robot_end[1].count == 1)
 	{
 		printf("no robot connect\n,%d", robot_end[1].count);
@@ -1875,6 +1886,6 @@ void *ekf_multi(void *arg)
 		pthread_join(tTreadEkf, NULL);
 		pthread_join(tTreadEkf2, NULL);
 	}
-	pthread_join(robotRun, NULL);
+	//pthread_join(robotRun, NULL);
 	return arg;
 }

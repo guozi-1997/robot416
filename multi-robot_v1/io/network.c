@@ -19,7 +19,7 @@ int connect_to(int *fd, unsigned char *dis)
 	int iSendLen;
 
 	*fd = socket(AF_INET, SOCK_STREAM, 0);
-	
+
 	//将一个字符串IP地址转换为一个网络字节序IP地址，成功返回非0
 	if (0 == inet_aton(dis, &tSocketServerAddr.sin_addr))
 	{
@@ -39,26 +39,26 @@ int connect_to(int *fd, unsigned char *dis)
 		return 1;
 	}
 }
-
+//用于获取本机ip地址
 char *GetLocalIp(void)
 {
 	int MAXINTERFACES = 16;
 	char *ip = NULL;
 	int fd, intrface, retn = 0;
-	struct ifreq buf[MAXINTERFACES];	//interface request
-	struct ifconf ifc;	//interface config
+	struct ifreq buf[MAXINTERFACES]; //interface request
+	struct ifconf ifc;				 //interface config
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0)
 	{
 		ifc.ifc_len = sizeof(buf);
 		ifc.ifc_buf = (caddr_t)buf;
-		if (!ioctl(fd, SIOCGIFCONF, (char *)&ifc))	//通过 SIOCGIFCONF 操作获取系统中所有的网络接口
+		if (!ioctl(fd, SIOCGIFCONF, (char *)&ifc)) //通过 SIOCGIFCONF 操作获取系统中所有的网络接口
 		{
 			intrface = ifc.ifc_len / sizeof(struct ifreq);
 
 			while (intrface-- > 0)
 			{
-				if (!(ioctl(fd, SIOCGIFADDR, (char *)&buf[intrface])))	//通过 SIOCGIFADDR 操作获取指定网络接口的IPv4地址
+				if (!(ioctl(fd, SIOCGIFADDR, (char *)&buf[intrface]))) //通过 SIOCGIFADDR 操作获取指定网络接口的IPv4地址
 				{
 					ip = (inet_ntoa(((struct sockaddr_in *)(&buf[intrface].ifr_addr))->sin_addr));
 					break;
