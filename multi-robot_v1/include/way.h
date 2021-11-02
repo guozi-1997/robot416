@@ -56,10 +56,10 @@ typedef struct Lidar_Data_Cnt
 } T_Lidar_Cnt;
 
 typedef struct info node, *PNODE;
-Point2D PointOnBezierOneControl(Point2D *cp, float t);
+/* Point2D PointOnBezierOneControl(Point2D *cp, float t);
 void ComputeOneBezier(Point2D *cp, int numberOfPoints, Point2D *curve);
 Point2D PointOnCubicBezier(Point2D *cp, float t);
-void ComputeDoubleBezier(Point2D *cp, int numberOfPoints, Point2D *curve);
+void ComputeDoubleBezier(Point2D *cp, int numberOfPoints, Point2D *curve); */
 PNODE addBack(PNODE phead, int data, char *ip, int fd); //尾部插入
 PNODE addFront(PNODE phead, int data);					//头部插入
 PNODE findFirst(PNODE phead, int data);					//检索数据

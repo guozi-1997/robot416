@@ -1,18 +1,16 @@
 
 #include <way.h>
-
 #define min(a, b) ((a > b) ? (b) : (a))
 #define max(a, b) ((a > b) ? (a) : (b))
 
-#define branch_num 3     //鎼滅储鏍戝垎鏀暟
-#define Layer 4          //闈欐€佹悳绱㈡爲灞傛暟涓哄畾鍊�
-#define ObsDeltaAng 150  //闅滅鐗╀笌鎼滅储璺緞瑙掑害宸槇鍊�
-#define ExpandDis 200    //鑶ㄨ儉璺濈mm
-#define Step 40          //姝ラ暱,鍗曚綅pix
-#define StepDistance 300 //姝ラ暱锛屽崟浣峬m
-#define Display_Flag 1   //0鏄剧ず鎵€鏈夋悳绱㈣矾寰勶紝1鏄剧ず瑙勫垝鍚庣殑鍙璺緞
-#define SafeDistance 400
-
+#define branch_num 3     //搜索树分支数
+#define Layer 4          //静态搜索树层数为定值
+#define ObsDeltaAng 150  //障碍物与搜索路径角度差阈值
+#define ExpandDis 200    //膨胀距离mm
+#define Step 40          //步长,单位pix
+#define StepDistance 300 //步长，单位mm
+#define Display_Flag 1   //0显示所有搜索路径，1显示规划后的可行路径
+float dis_50 = 67.0;
 int randangle[6][100][10] = {0};
 int childrandcnt = 0;
 int pix[10] = {0};
@@ -21,116 +19,1592 @@ int planning_cnt = 0;
 RandRito = 1;
 int time_srand = 0;
 int release_num[10] = {0};
-int Node_PerNum = 1; //鎵€鍦ㄥ眰鐨勮妭鐐规暟
-int Circle_num = 0;  //浜х敓闅忔満鏁扮殑寰幆娆℃暟
+int Node_PerNum = 3; //所在层的节点数
+
+int Circle_num = 0; //产生随机数的循环次数
 
 int obs_search_cnt = 0;
+int tmpminpix = 0;
+int tmpmaxpix = 0;
 
 int tmpmindistance = 0;
 int tmpmaxdistance = 0;
 
-int tmpminangle_f = 0;
-int tmpmaxangle_f = 0;
+int tmpminangsub = 0;
 
 int tmpminang_2 = 0;
 int tmpminpix_2 = 0;
 
-int ROLLWINDOW_PIX = 0;
-
-int Tmp_Cnt[10] = {0};
-int Tmp_Cilcle_Cnt[10] = {0};
-
-int tmp_maxrad = 0;
-
-int tmp_maxangle = 0, tmp_minangle = 0, tmp_mindis = 0;
-int tmp_minangle_dis = 0;
-int tmp_maxangle_dis = 0;
-int SigleObs_MaxAngle = 0;
-int SigleObs_MinAngle = 0;
-int SigleObs_MaxAngle_Dis = 0;
-int SigleObs_MinAngle_Dis = 0;
-int SigleObs_MinDis = 0;
-
 T_OkPath OkPath;
 T_Best_OkPath Best_OkPath;
-T_Reach Reach_Path;
-T_ReachFilter ReachFilter_Path;
-T_Lidar_Cnt Lidar_Data;
-ROLLWINDOW_RITO = 1;
-int calibrate_cnt = 0;
-int HaveNoObs = 0;
 
-int Lidar_Ok_Flag = 0;
-
-//one control point
-Point2D PointOnBezierOneControl(Point2D *cp, float t)
+struct Distance
 {
-    float ax, bx;
-    float ay, by;
-    float tSquared;
-    Point2D result;
 
-    ax = cp[1].x - cp[0].x;
-    ax = cp[0].x + t * ax;
+    int tmp4_angle;
+    int tmp4_distance;
+    int evaluation;
+    int tmp_angle_layer4[4];
+    int dis_tmp4_i_x[4];
+    int dis_tmp4_i_y[4];
 
-    bx = cp[2].x - cp[1].x;
-    bx = cp[1].x + t * bx;
+    int dis_tmp4_j_x[4];
+    int dis_tmp4_j_y[4];
 
-    ay = cp[1].y - cp[0].y;
-    ay = cp[0].y + t * ay;
+    int dis_tmp_i_4[4];
+    int dis_tmp_j_4[4];
+    float finalaim_x;
+    float finalaim_y;
+    float finalaim;
+    int BA[2];
+    int AC[2];
+    int BC[2];
 
-    by = cp[2].y - cp[1].y;
-    by = cp[1].y + t * by;
+    int BA_x[2];
+    int AC_x[2];
+    int BC_x[2];
 
-    tSquared = t * t;
+    int BA_y[2];
+    int AC_y[2];
+    int BC_y[2];
+    float angle_A[2];
 
-    result.x = ax + t * (bx - ax);
-    result.y = ay + t * (by - ay);
+    int cost_i;
+    int cost_j;
+} dis;
+int goalList(struct Distance *dis, int i, int j, int p)
+{
+    /********一些评估函数用的上的预处理数据************/
+    dis->finalaim_x = robot_temp[1].distance * cos(robot_temp[1].angle * 3.14 / 1800);
+    dis->finalaim_y = robot_temp[1].distance * sin(robot_temp[1].angle * 3.14 / 1800);
 
-    return result;
+    dis->dis_tmp4_i_x[0] = StepDistance * cos(OkPath.Ok_PerLayer_Angle[i][0] * 3.14 / 1800);
+    dis->dis_tmp4_i_y[0] = StepDistance * sin(OkPath.Ok_PerLayer_Angle[i][0] * 3.14 / 1800);
+
+    dis->dis_tmp4_i_x[1] = dis->dis_tmp4_i_x[0] + StepDistance * cos(OkPath.Ok_PerLayer_Angle[i][1] * 3.14 / 1800);
+    dis->dis_tmp4_i_y[1] = dis->dis_tmp4_i_y[0] + StepDistance * sin(OkPath.Ok_PerLayer_Angle[i][1] * 3.14 / 1800);
+
+    dis->dis_tmp4_i_x[2] = dis->dis_tmp4_i_x[1] + StepDistance * cos(OkPath.Ok_PerLayer_Angle[i][2] * 3.14 / 1800);
+    dis->dis_tmp4_i_y[2] = dis->dis_tmp4_i_y[1] + StepDistance * sin(OkPath.Ok_PerLayer_Angle[i][2] * 3.14 / 1800);
+
+    dis->dis_tmp4_i_x[3] = dis->dis_tmp4_i_x[2] + StepDistance * cos(OkPath.Ok_PerLayer_Angle[i][3] * 3.14 / 1800);
+    dis->dis_tmp4_i_y[3] = dis->dis_tmp4_i_y[2] + StepDistance * sin(OkPath.Ok_PerLayer_Angle[i][3] * 3.14 / 1800);
+
+    dis->dis_tmp_i_4[0] = (dis->finalaim_x - dis->dis_tmp4_i_x[0]) * (dis->finalaim_x - dis->dis_tmp4_i_x[0]) + (dis->finalaim_y - dis->dis_tmp4_i_y[0]) * (dis->finalaim_y - dis->dis_tmp4_i_y[0]);
+    dis->dis_tmp_i_4[1] = (dis->finalaim_x - dis->dis_tmp4_i_x[1]) * (dis->finalaim_x - dis->dis_tmp4_i_x[1]) + (dis->finalaim_y - dis->dis_tmp4_i_y[1]) * (dis->finalaim_y - dis->dis_tmp4_i_y[1]);
+    dis->dis_tmp_i_4[2] = (dis->finalaim_x - dis->dis_tmp4_i_x[2]) * (dis->finalaim_x - dis->dis_tmp4_i_x[2]) + (dis->finalaim_y - dis->dis_tmp4_i_y[2]) * (dis->finalaim_y - dis->dis_tmp4_i_y[2]);
+    dis->dis_tmp_i_4[3] = (dis->finalaim_x - dis->dis_tmp4_i_x[3]) * (dis->finalaim_x - dis->dis_tmp4_i_x[3]) + (dis->finalaim_y - dis->dis_tmp4_i_y[3]) * (dis->finalaim_y - dis->dis_tmp4_i_y[3]);
+
+    dis->dis_tmp4_j_x[0] = StepDistance * cos(OkPath.Ok_PerLayer_Angle[j][0] * 3.14 / 1800);
+    dis->dis_tmp4_j_y[0] = StepDistance * sin(OkPath.Ok_PerLayer_Angle[j][0] * 3.14 / 1800);
+
+    dis->dis_tmp4_j_x[1] = dis->dis_tmp4_j_x[0] + StepDistance * cos(OkPath.Ok_PerLayer_Angle[j][1] * 3.14 / 1800);
+    dis->dis_tmp4_j_y[1] = dis->dis_tmp4_j_y[0] + StepDistance * sin(OkPath.Ok_PerLayer_Angle[j][1] * 3.14 / 1800);
+
+    dis->dis_tmp4_j_x[2] = dis->dis_tmp4_i_x[1] + StepDistance * cos(OkPath.Ok_PerLayer_Angle[j][2] * 3.14 / 1800);
+    dis->dis_tmp4_j_y[2] = dis->dis_tmp4_i_y[1] + StepDistance * sin(OkPath.Ok_PerLayer_Angle[j][2] * 3.14 / 1800);
+
+    dis->dis_tmp4_j_x[3] = dis->dis_tmp4_j_x[2] + StepDistance * cos(OkPath.Ok_PerLayer_Angle[j][3] * 3.14 / 1800);
+    dis->dis_tmp4_j_y[3] = dis->dis_tmp4_j_y[2] + StepDistance * sin(OkPath.Ok_PerLayer_Angle[j][3] * 3.14 / 1800);
+
+    dis->dis_tmp_j_4[0] = (dis->finalaim_x - dis->dis_tmp4_j_x[0]) * (dis->finalaim_x - dis->dis_tmp4_j_x[0]) + (dis->finalaim_y - dis->dis_tmp4_j_y[0]) * (dis->finalaim_y - dis->dis_tmp4_j_y[0]);
+    dis->dis_tmp_j_4[1] = (dis->finalaim_x - dis->dis_tmp4_j_x[1]) * (dis->finalaim_x - dis->dis_tmp4_j_x[1]) + (dis->finalaim_y - dis->dis_tmp4_j_y[1]) * (dis->finalaim_y - dis->dis_tmp4_j_y[1]);
+    dis->dis_tmp_j_4[2] = (dis->finalaim_x - dis->dis_tmp4_j_x[2]) * (dis->finalaim_x - dis->dis_tmp4_j_x[2]) + (dis->finalaim_y - dis->dis_tmp4_j_y[2]) * (dis->finalaim_y - dis->dis_tmp4_j_y[2]);
+    dis->dis_tmp_j_4[3] = (dis->finalaim_x - dis->dis_tmp4_j_x[3]) * (dis->finalaim_x - dis->dis_tmp4_j_x[3]) + (dis->finalaim_y - dis->dis_tmp4_j_y[3]) * (dis->finalaim_y - dis->dis_tmp4_j_y[3]);
+    /**************************************************************/
+
+    dis->BC_x[0] = dis->dis_tmp4_i_x[3] - dis->dis_tmp4_i_x[2];
+    dis->BC_y[0] = dis->dis_tmp4_i_y[3] - dis->dis_tmp4_i_y[2];
+    dis->BC[0] = dis->BC_x[0] * dis->BC_x[0] + dis->BC_y[0] * dis->BC_y[0];
+    dis->BC[0] = (int)pow(dis->BC[0], 0.5);
+
+    dis->BA[0] = (int)pow(dis->dis_tmp_i_4[2], 0.5);
+    dis->AC[0] = (int)pow(dis->dis_tmp_i_4[3], 0.5);
+    dis->angle_A[0] = dis->dis_tmp_i_4[2] + dis->dis_tmp_i_4[3] - dis->BC[0] * dis->BC[0];
+    dis->angle_A[0] = dis->angle_A[0] / (2 * dis->BA[0] * dis->AC[0]);
+
+    dis->BC_x[1] = dis->dis_tmp4_j_x[3] - dis->dis_tmp4_j_x[2];
+    dis->BC_y[1] = dis->dis_tmp4_j_y[3] - dis->dis_tmp4_j_y[2];
+    dis->BC[1] = dis->BC_x[1] * dis->BC_x[1] + dis->BC_y[1] * dis->BC_y[1];
+    dis->BC[1] = (int)pow(dis->BC[1], 0.5);
+
+    dis->BA[1] = (int)pow(dis->dis_tmp_j_4[2], 0.5);
+    dis->AC[1] = (int)pow(dis->dis_tmp_j_4[3], 0.5);
+    dis->angle_A[1] = dis->dis_tmp_j_4[2] + dis->dis_tmp_j_4[3] - dis->BC[1] * dis->BC[1];
+    dis->angle_A[1] = dis->angle_A[1] / (2 * dis->BA[1] * dis->AC[1]);
+    //printf("dis->angle_A[0] = %f\n", dis->angle_A[0]);
+
+    /*******heading评估函数**********/
+    dis->angle_A[0] = acos(dis->angle_A[0]) * 180 / pi;
+    dis->angle_A[1] = acos(dis->angle_A[1]) * 180 / pi;
+    //heading评估函数第一次评分
+    OkPath.evaluation[j] = -dis->angle_A[1] * 5;
+    OkPath.evaluation[i] = -dis->angle_A[0] * 5;
+    /**************************************************************/
+
+    /********gaollist代价函数************/
+    dis->cost_i = pow(dis->dis_tmp_i_4[0], 0.5);
+    dis->cost_j = pow(dis->dis_tmp_j_4[0], 0.5);
+    //gaollist评估函数第二次评分
+    //只有距离目标距离值小于2m的时候才会开启goallist函数
+    dis->finalaim = pow((dis->finalaim_x * dis->finalaim_x + dis->finalaim_y * dis->finalaim_y), 0.5);
+    if (dis->finalaim <= 200)
+    {
+        OkPath.evaluation[i] = OkPath.evaluation[i] - dis->cost_i / 10 * 5;
+        OkPath.evaluation[j] = OkPath.evaluation[j] - dis->cost_j / 10 * 5;
+    }
+    /**************************************************************/
+
+    if (OkPath.evaluation[i] < OkPath.evaluation[j])
+    {
+        dis->tmp4_distance = OkPath.Ok_Distance[i];
+        OkPath.Ok_Distance[i] = OkPath.Ok_Distance[j];
+        OkPath.Ok_Distance[j] = dis->tmp4_distance;
+
+        dis->tmp4_angle = OkPath.Ok_Angle[i];
+        OkPath.Ok_Angle[i] = OkPath.Ok_Angle[j];
+        OkPath.Ok_Angle[j] = dis->tmp4_angle;
+
+        dis->evaluation = OkPath.evaluation[i];
+        OkPath.evaluation[i] = OkPath.evaluation[j];
+        OkPath.evaluation[j] = dis->evaluation;
+
+        for (p = 0; p < 4; p++)
+        {
+            dis->tmp_angle_layer4[p] = OkPath.Ok_PerLayer_Angle[i][p];
+            OkPath.Ok_PerLayer_Angle[i][p] = OkPath.Ok_PerLayer_Angle[j][p];
+            OkPath.Ok_PerLayer_Angle[j][p] = dis->tmp_angle_layer4[p];
+        }
+    }
+
+    return 0;
 }
 
-void ComputeOneBezier(Point2D *cp, int numberOfPoints, Point2D *curve)
+int get_r(int rad)
 {
-    float dt;
-    int i;
-    dt = 1.0 / (numberOfPoints - 1);
-    for (i = 0; i < numberOfPoints; i++)
-        curve[i] = PointOnBezierOneControl(cp, i * dt);
+
+    if (rad < 20)
+    {
+        return rad / 4 + 5;
+    }
+    if (rad >= 20 && rad < 30)
+    {
+        return rad / 4 + 4;
+    }
+    if (rad >= 30 && rad < 40)
+    {
+        return rad / 4 + 3;
+    }
+    if (rad >= 40 && rad < 50)
+    {
+        return rad / 4 + 2;
+    }
+    if (rad >= 50 && rad < 60)
+    {
+        return rad / 4 + 1;
+    }
+    if (rad >= 60 && rad < 70)
+    {
+        return rad / 4 + 0;
+    }
+    if (rad >= 70 && rad < 80)
+    {
+        return rad / 4 - 1;
+    }
+    if (rad >= 80 && rad < 90)
+    {
+        return rad / 4 - 2;
+    }
+    if (rad >= 90 && rad < 100)
+    {
+        return rad / 4 - 3;
+    }
+    if (rad >= 100)
+    {
+        return rad / 4 - 4;
+    }
+}
+//=========================================================================
+void min_cir(unsigned char *addr)
+{
+    int y = 0;
+    int x = 0;
+    float angle = 0;
+    int r = 0;
+    int d = 0;
+    int d_x = 0;
+    int d_y = 0;
+    int m = 0, n = 0;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int p = 0;
+    int s = 0, q = 0;
+    float theta = 0.0;
+
+    //--------------------画直角坐标系-------------------------------
+    x = 0;
+    for (y = -275; y < 275; y++)
+    {
+        addr[cell(x, y, 0)] = 255;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+    }
+
+    y = 0;
+    for (x = -275; x < 275; x++)
+    {
+        addr[cell(x, y, 0)] = 255;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+    }
+    //这里的距离值已经被处理，与图像相接轨
+    //----------判断lidar采集到的障碍物点是否属实(滤波)-------
+    if (AimCount > 50)
+    {
+        for (i = 0; i < AimCount; i++)
+        {
+            //r = CurLidarDistPix[i];
+            if ((i > 0) && (i < AimCount - 1) && (abs(CurLidarDistPix[i] - CurLidarDistPix[i - 1]) < 2 || abs(CurLidarDistPix[i + 1] - CurLidarDistPix[i]) < 2))
+            {
+                if (CurLidarDistPix[i] > 40)
+                {
+                    TrueCurLidarDistPix[TrueAimCount] = CurLidarDistPix[i];
+                    TrueCurLidarAng[TrueAimCount] = CurLidarAng[i];
+                    //printf("TrueCurLidarAng[%d]=%d\n",TrueAimCount,TrueCurLidarAng[TrueAimCount]);
+                    //printf("TrueCurLidarDistPix[%d]=%d\n",TrueAimCount,TrueCurLidarDistPix[TrueAimCount]);
+                    TrueAimCount++;
+                }
+                //printf("TrueAimCount = %d\n", TrueAimCount);
+            }
+
+            if ((i > 0) && (i < AimCount - 1) && (abs(CurLidarDistance[i] - CurLidarDistance[i - 1]) < 5 && abs(CurLidarDistance[i + 1] - CurLidarDistance[i]) < 5))
+            {
+                TrueCurLidarDistance[TrueAimCntDis] = CurLidarDistance[i];
+                TrueCurLidarAng2[TrueAimCntDis] = CurLidarAng[i];
+                TrueAimCntDis++;
+                if (CurLidarDistance[i] < 350)
+                {
+                    //	printf("CurLidarDistance[%d]=%d\n",i-1,CurLidarDistance[i-1]);
+                    //	printf("CurLidarDistance[%d]=%d\n",i,CurLidarDistance[i]);
+                    //	printf("CurLidarDistance[%d]=%d\n",i+1,CurLidarDistance[i+1]);
+                }
+            }
+        }
+        //	printf("TrueAimCntDis=%d,TrueAimCount=%d\n",TrueAimCntDis,TrueAimCount);
+    }
+
+    //--------------------滤波后的lidar障碍物显示-----------------------------------
+
+    //-----雷达坐标转换到图像坐标,雷达坐标的零度角位于机器人正向y轴上-------
+    for (i = 0; i < TrueAimCount; i++)
+    {
+        TrueCurLidarAng[i] = (3600 + 900 - TrueCurLidarAng[i]) % 3600;
+    }
+
+    for (i = 0; i < TrueAimCntDis; i++)
+    {
+        TrueCurLidarAng2[i] = (3600 + 900 - TrueCurLidarAng2[i]) % 3600;
+    }
+
+    //--------------冒泡法排序------------------------------------------
+    //----------将扫描到的障碍物转化到机器人显示坐标下--
+    //----------按照角度递增排序(机器人头朝向90度)------------
+    int tmpangle = 0;
+    int tmppix = 0;
+    int tmpdis = 0;
+    for (i = 0; i < TrueAimCount - 1; i++)
+    {
+        for (j = (i + 1); j < TrueAimCount; j++)
+        {
+            if (TrueCurLidarAng[i] > TrueCurLidarAng[j])
+            {
+                tmpangle = TrueCurLidarAng[i];
+                TrueCurLidarAng[i] = TrueCurLidarAng[j];
+                TrueCurLidarAng[j] = tmpangle;
+
+                tmppix = TrueCurLidarDistPix[i];
+                TrueCurLidarDistPix[i] = TrueCurLidarDistPix[j];
+                TrueCurLidarDistPix[j] = tmppix;
+
+                /*	tmpdis=TrueCurLidarDistance[i];
+				TrueCurLidarDistance[i]=TrueCurLidarDistance[j];
+				TrueCurLidarDistance[j]=tmpdis;	
+			*/
+            }
+        }
+    }
+
+    for (i = 0; i < TrueAimCntDis - 1; i++)
+    {
+        for (j = (i + 1); j < TrueAimCntDis; j++)
+        {
+            if (TrueCurLidarAng2[i] > TrueCurLidarAng2[j])
+            {
+                tmpangle = TrueCurLidarAng2[i];
+                TrueCurLidarAng2[i] = TrueCurLidarAng2[j];
+                TrueCurLidarAng2[j] = tmpangle;
+
+                tmpdis = TrueCurLidarDistance[i];
+                TrueCurLidarDistance[i] = TrueCurLidarDistance[j];
+                TrueCurLidarDistance[j] = tmpdis;
+            }
+        }
+    }
+
+    //-------将采集到的障碍物数据滤波，去除重复数据----
+
+    for (i = 0; i < TrueAimCount - 1; i++)
+    {
+        if (TrueCurLidarAng[i] != TrueCurLidarAng[i + 1])
+        {
+            FilterLidarAng[FilterCount] = TrueCurLidarAng[i];
+            FilterLidarDistPix[FilterCount] = TrueCurLidarDistPix[i];
+            //	FilterLidarDistance[FilterCount]=TrueCurLidarDistance[i];
+            FilterCount++;
+        }
+    }
+    for (i = 0; i < TrueAimCntDis - 1; i++)
+    {
+        if (TrueCurLidarAng2[i] != TrueCurLidarAng2[i + 1])
+        {
+            FilterLidarAng2[FilterCount2] = TrueCurLidarAng2[i];
+            FilterLidarDistance[FilterCount2] = TrueCurLidarDistance[i];
+            FilterCount2++;
+        }
+    }
+
+    //----提取距离机器人最近的障碍物像素和角度----------
+    if (FilterCount)
+    {
+        tmpminpix = FilterLidarDistPix[0];
+        tmpmaxpix = FilterLidarDistPix[0];
+
+        tmpminangsub = abs(FilterLidarAng[0] - robot_temp[1].angle);
+
+        for (i = 0; i < FilterCount; i++)
+        {
+            tmpminpix = min(tmpminpix, FilterLidarDistPix[i]);
+            tmpmaxpix = max(tmpmaxpix, FilterLidarDistPix[i]);
+            tmpminangsub = min(tmpminangsub, abs(FilterLidarAng[i] - robot_temp[1].angle));
+        }
+    }
+
+    //----------显示按图像坐标排序后的障碍物-----------------
+
+    if (FilterCount != 0)
+    {
+        showFiltercount = 0;
+        memset(showFilterLidarDistPix, 0, 1024);
+        memset(showFilterLidarAng, 0, 1024);
+        for (i = 0; i < FilterCount; i++)
+        {
+            showFilterLidarAng[showFiltercount] = FilterLidarAng[i];
+            showFilterLidarDistPix[showFiltercount] = FilterLidarDistPix[i];
+            showFiltercount++;
+        }
+        // printf("showFiltercount = %d,FilterCount =%d\n", showFiltercount, FilterCount);
+    }
+
+    for (i = 0; i < showFiltercount; i++)
+    {
+        r = showFilterLidarDistPix[i];
+        if (r < 100)
+        {
+            for (angle = showFilterLidarAng[i] * 3.14 / 1800 - 0.05; angle < showFilterLidarAng[i] * 3.14 / 1800 + 0.05; angle = angle + 0.05)
+            {
+
+                y = r * sin(angle);
+                x = r * cos(angle);
+                addr[cell(x, y, 0)] = 0;
+                addr[cell(x, y, 1)] = 255;
+                addr[cell(x, y, 2)] = 255;
+            }
+        }
+        else
+        {
+            for (angle = showFilterLidarAng[i] * 3.14 / 1800 - 0.05; angle < showFilterLidarAng[i] * 3.14 / 1800 + 0.05; angle = angle + 0.01)
+            {
+
+                y = r * sin(angle);
+                x = r * cos(angle);
+                addr[cell(x, y, 0)] = 0;
+                addr[cell(x, y, 1)] = 255;
+                addr[cell(x, y, 2)] = 255;
+            }
+        }
+        /*         for (d = 0; d < 4; d++)
+        {
+            if (showFilterLidarAng[i] < 900)
+            {
+                y = r * sin(showFilterLidarAng[i] * 3.14 / 1800) - 2 + d;
+                x = r * cos(showFilterLidarAng[i] * 3.14 / 1800) - 2 + d;
+            }
+            if (showFilterLidarAng[i] > 900)
+            {
+                y = r * sin(showFilterLidarAng[i] * 3.14 / 1800) + 1 + d;
+                x = r * cos(showFilterLidarAng[i] * 3.14 / 1800) + 5 * sin(showFilterLidarAng[i] * 3.14 / 1800);
+            }
+            addr[cell(x, y, 0)] = 255;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
+        } */
+        //printf("FilterLidarAng[%d]=%d\n",i,FilterLidarAng[i]);
+        //printf("FilterLidarDistPix[%d]=%d\n",i,FilterLidarDistPix[i]);
+        //printf("\n");
+    }
+
+    //------------------------------------------------------------------------
+    //--------将筛选后的障碍物的像素信息转换为距离信息-------------
+    for (i = 0; i < FilterCount; i++)
+    {
+        //单位cm转换成mm
+        if (FilterLidarDistPix[i] - dis_50 < 75)
+            FilterLidarDistance[i] = 10 * (a11 * pow(a12 * (FilterLidarDistPix[i] - dis_50), a13) + 50);
+
+        if (FilterLidarDistPix[i] - dis_50 >= 75 && FilterLidarDistPix[i] - dis_50 < 146)
+            FilterLidarDistance[i] = 10 * (a21 * pow(a22 * (FilterLidarDistPix[i] - dis_50), a23) + 50);
+
+        if (FilterLidarDistPix[i] - dis_50 >= 146 && FilterLidarDistPix[i] - dis_50 < 164)
+            FilterLidarDistance[i] = 10 * (a31 * pow(a32 * (FilterLidarDistPix[i] - dis_50), a33) + 50);
+
+        if (FilterLidarDistPix[i] - dis_50 >= 164)
+            FilterLidarDistance[i] = 10 * (a41 * pow(a42 * (FilterLidarDistPix[i] - dis_50), a43) + 50);
+        //printf("FilterLidarDistance[%d]=%d\n",i,FilterLidarDistance[i]);
+    }
+    if (FilterCount2)
+    {
+        tmpmindistance = FilterLidarDistance[0];
+        tmpmaxdistance = FilterLidarDistance[0];
+
+        for (i = 0; i < FilterCount2; i++)
+        {
+            tmpmindistance = min(tmpmindistance, FilterLidarDistance[i]);
+            tmpmaxdistance = max(tmpmaxdistance, FilterLidarDistance[i]);
+        }
+    }
+    //--------------用lidar数据初步判断障碍物的边界--------------------------
+
+    for (i = 0; i < FilterCount - 1; i++)
+    {
+        if (FilterLidarAng[i + 1] - FilterLidarAng[i] > 100)
+        {
+            LidarEdgeAngle[LidarEdgeCnt] = FilterLidarAng[i];
+            LidarEdgeDistPix[LidarEdgeCnt] = FilterLidarDistPix[i];
+            LidarEdgeCnt++;
+
+            LidarEdgeAngle[LidarEdgeCnt] = FilterLidarAng[i + 1];
+            LidarEdgeDistPix[LidarEdgeCnt] = FilterLidarDistPix[i + 1];
+            LidarEdgeCnt++;
+        }
+    }
+
+    for (i = 0; i < LidarEdgeCnt; i++)
+    {
+        r = LidarEdgeDistPix[i];
+
+        for (d = -8; d < 8; d++)
+        {
+            if (LidarEdgeAngle[i] < 900)
+            {
+                y = r * sin(LidarEdgeAngle[i] * 3.14 / 1800) + 1 + 5 * cos(LidarEdgeAngle[i] * 3.14 / 1800) + d;
+                x = r * cos(LidarEdgeAngle[i] * 3.14 / 1800) - 5;
+            }
+            if (LidarEdgeAngle[i] > 900)
+            {
+                y = r * sin(LidarEdgeAngle[i] * 3.14 / 1800) + 1 + d;
+                x = r * cos(LidarEdgeAngle[i] * 3.14 / 1800) + 5 * sin(LidarEdgeAngle[i] * 3.14 / 1800);
+            }
+
+            //addr[cell(x,y,0)]=0;
+            //addr[cell(x,y,1)]=0;
+            //addr[cell(x,y,2)]=255;
+        }
+
+        //printf("LidarEdgeCnt=%d\n",LidarEdgeCnt);
+        //printf("LidarEdgeAngle[%d]=%d\n",i,LidarEdgeAngle[i]);
+        //printf("LidarEdgeDistPix[%d]=%d\n",i,LidarEdgeDistPix[i]);
+        //printf("\n");
+    }
+    //-------------根据获取的边界信息提取可行路径-----------
+
+    //---像素信息转换为距离信息，筛选可行路径----
+    for (i = 0; i < LidarEdgeCnt; i++)
+    {
+
+        if (LidarEdgeDistPix[i] - dis_50 < 75)
+            LidarEdgeDistance[i] = a11 * pow(a12 * (LidarEdgeDistPix[i] - dis_50), a13) + 50;
+
+        if (LidarEdgeDistPix[i] - dis_50 >= 75 && LidarEdgeDistPix[i] - dis_50 < 146)
+            LidarEdgeDistance[i] = a21 * pow(a22 * (LidarEdgeDistPix[i] - dis_50), a23) + 50;
+
+        if (LidarEdgeDistPix[i] - dis_50 >= 146 && LidarEdgeDistPix[i] - dis_50 < 164)
+            LidarEdgeDistance[i] = a31 * pow(a32 * (LidarEdgeDistPix[i] - dis_50), a33) + 50;
+
+        if (LidarEdgeDistPix[i] - dis_50 >= 164)
+            LidarEdgeDistance[i] = a41 * pow(a42 * (LidarEdgeDistPix[i] - dis_50), a43) + 50;
+        //	printf("LidarEdgeDistance[%d]=%d\n",i,LidarEdgeDistance[i]);//厘米
+    }
+    //---判断是否可行-------
+    OkPathCnt = 0;
+    memset(OkPathDistPix, 0, 10);
+    memset(OkPathAngle, 0, 10);
+    memset(OkPathDistance, 0, 10);
+
+    PathWidth = 0.0;
+
+    //-----------------------第二层筛选判断是否为可行路径------
+    if (LidarEdgeCnt > 1)
+    {
+        for (i = 0; i < LidarEdgeCnt - 1; i++)
+        {
+            if (i % 2 == 0)
+            {
+                theta = abs(LidarEdgeAngle[i] - LidarEdgeAngle[i + 1]) * 3.14 / 1800;
+                /*******如果障碍物之间的空隙超过40像素值那就说明这个区间可以让机器人通过********************/
+                if (LidarEdgeDistance[i] * LidarEdgeDistance[i] + LidarEdgeDistance[i + 1] * LidarEdgeDistance[i + 1] - 2 * LidarEdgeDistance[i] * LidarEdgeDistance[i + 1] * cos(theta) > 1600.0)
+                {
+                    OkPathAngle[OkPathCnt] = LidarEdgeAngle[i];
+                    OkPathDistPix[OkPathCnt] = LidarEdgeDistPix[i];
+                    OkPathDistance[OkPathCnt] = LidarEdgeDistance[i];
+                    OkPathCnt++;
+
+                    OkPathAngle[OkPathCnt] = LidarEdgeAngle[i + 1];
+                    OkPathDistPix[OkPathCnt] = LidarEdgeDistPix[i + 1];
+                    OkPathDistance[OkPathCnt] = LidarEdgeDistance[i + 1];
+                    OkPathCnt++;
+
+                    PathWidth = LidarEdgeDistance[i] * LidarEdgeDistance[i] + LidarEdgeDistance[i + 1] * LidarEdgeDistance[i + 1] - 2 * LidarEdgeDistance[i] * LidarEdgeDistance[i + 1] * cos(theta);
+                    PathWidth = pow(PathWidth, 0.5);
+
+                    //	printf("PathWidth=%6.2f\n",PathWidth);
+                    //	printf("path theta=%6.2f\n",theta*1800/3.14);
+                    //	printf("path width=%6.2f\n",LidarEdgeDistance[i]*LidarEdgeDistance[i]+LidarEdgeDistance[i+1]*LidarEdgeDistance[i+1]-2*LidarEdgeDistance[i]*LidarEdgeDistance[i+1]*cos(theta));
+                    //	printf("\n");
+                }
+                //printf("theta=%f\n",theta*1800/3.14);
+                //printf("path width=%f\n",LidarEdgeDistance[i]*LidarEdgeDistance[i]+LidarEdgeDistance[i+1]*LidarEdgeDistance[i+1]-2*LidarEdgeDistance[i]*LidarEdgeDistance[i+1]*cos(theta));
+            }
+        }
+    }
+    //-----------------取筛选后可行路径的中点---------------------
+    if (OkPathCnt)
+    {
+        for (i = 0; i < OkPathCnt - 1; i++)
+        {
+            if (i % 2 == 0)
+            {
+                LidarOkPathMidAng[LidarOkPathMidCnt] = (OkPathAngle[i] + OkPathAngle[i + 1]) / 2;
+                LidarOkPathMidPix[LidarOkPathMidCnt] = (OkPathDistPix[i] + OkPathDistPix[i + 1]) / 2;
+                LidarOkPathMidCnt++;
+            }
+            //printf("LidarOkPathMidAng[%d]=%d\n",i,LidarOkPathMidAng[i]);
+            //printf("LidarOkPathMidPix[%d]=%d\n",i,LidarOkPathMidPix[i]);
+            //printf("\n");
+        }
+    }
+
+    //-----lidar扫描的可行路径中点按照与目标物的偏差排序------
+    if (LidarOkPathMidCnt)
+    {
+        int tmplidarang = 0;
+        int tmplidarpix = 0;
+        if (LidarOkPathMidCnt > 1)
+        {
+            for (i = 0; i < LidarOkPathMidCnt - 1; i++)
+            {
+                for (j = i + 1; j < LidarOkPathMidCnt; j++)
+                {
+                    if (abs(LidarOkPathMidAng[i] - robot_temp[1].angle) > abs(LidarOkPathMidAng[j] - robot_temp[1].angle))
+                    {
+                        tmplidarang = LidarOkPathMidAng[i];
+                        LidarOkPathMidAng[i] = LidarOkPathMidAng[j];
+                        LidarOkPathMidAng[j] = tmplidarang;
+
+                        tmplidarpix = LidarOkPathMidPix[i];
+                        LidarOkPathMidPix[i] = LidarOkPathMidPix[j];
+                        LidarOkPathMidPix[j] = tmplidarpix;
+                    }
+                }
+            }
+        }
+
+        //	printf("LidarOkPathMidAng[0]=%d\n",LidarOkPathMidAng[0]);
+        //	printf("LidarOkPathMidPix[0]=%d\n",LidarOkPathMidPix[0]);
+        //	printf("\n");
+    }
+
+    //-------判断机器人到总目标的直线路径上有无障碍物---
+
+    /*     if (FilterCount)
+    {
+        if (tmpminangsub > 50)
+            isArrivedDirect_Flag = 1;
+    } */
+
+    //--------------------RRT产生一个随机路径----------------------
+    //	srand((unsigned)time(NULL));
+    //pix[]用于在屏幕上描绘rrt路径
+    pix[0] = Step;
+    stepdis[0] = StepDistance;
+    //NumPathPlanningCnt=0;
+    //PathPlanningAng[6][256][10]={0};
+    //PathPlanningPix[6][256][10]={0};
+
+    if (FilterCount && FilterCount2 && (!isArrivedDirect_Flag))
+    {
+        OkPath.Ok_Cnt_PerLayer = 0;
+        Best_OkPath.Best_Ok_Cnt = 0;
+        //srand((int)time(NULL));
+        //srand(time_srand);
+        if (!isOkPath)
+        {
+            for (k = 0; k < Layer; k++) //师兄写的是i，事实上i会不断变成0，无法使i递增，改为K
+            {
+                int tmp = 0;
+                fd_rand = open("/dev/urandom", O_RDONLY); //  /dev/urandom设备可实现随机数产生
+                printf("RandRito=%d\n", RandRito);
+                PathPlanningCnt = 0;
+
+                for (j = 0; j < Node_PerNum; j++)
+                {
+                    for (i = 0; i < branch_num; i++)
+                    {
+                        //randangle[childrandcnt][i]=rand()%1200+300;
+                        read(fd_rand, randangle[childrandcnt][j] + i, sizeof(int));                      //二维数组a[i]表示 第i行首地址
+                        randangle[childrandcnt][j][i] = abs(randangle[childrandcnt][j][i]) % 1200 + 300; //30-150度搜索
+                                                                                                         //	printf("randangle[%d][%d]=%d\n",childrandcnt,i,randangle[childrandcnt][i]%1200+300);
+                    }
+                }
+
+                for (j = 0; j < Node_PerNum; j++)
+                {
+                    PathPlanningCnt = 0;
+                    for (i = 0; i < branch_num; i++)
+                    {
+                        PathPlanningAng[NumPathPlanningCnt][j][PathPlanningCnt] = randangle[childrandcnt][j][i];
+
+                        PathPlanningCnt++;
+                    }
+                }
+
+                // printf("pix[%d]=%d\n", planning_cnt, pix[planning_cnt]);
+                childrandcnt++;
+                NumPathPlanningCnt++;
+                RandRito = RandRito * 2;
+                printf("NumPathPlanningCnt = %d\n", NumPathPlanningCnt);
+                tmp = pix[planning_cnt];
+                planning_cnt++;
+                pix[planning_cnt] = tmp + pix[0];
+
+                isOkPath = 1;
+                close(fd_rand);
+            }
+
+            if (NumPathPlanningCnt < Layer)
+            {
+                Node_PerNum = pow(branch_num, Circle_num + 1); //需要拓展的搜索节点
+                printf("Node_PerNum=%d\n", Node_PerNum);
+                isOkPath = 0;
+                Circle_num++;
+            }
+        }
+
+        /*
+		for(m=0;m<Node_PerNum;m++)
+		{
+			for(i=0;i<branch_num;i++)
+			{
+				printf("PathPlanningAng[3][%d][%d]=%d\n",m,i,PathPlanningAng[3][m][i]);
+			}
+		}*/
+
+        //	printf("\n");
+
+        //printf("NumPathPlanningCnt=%d\n",NumPathPlanningCnt);
+        //printf("isOkPath=%d\n",isOkPath);
+        //printf("randangle=%d\n",randangle);
+
+        //--------------------------------------------------------------------------//
+        //-------------将步长的距离信息转换成像素信息-------------//
+        //--------------------------------------------------------------------------//
+
+        /*	if((CurLidarDist>(618+300)) && (CurLidarDist<(995+300)))
+		{
+			CurLidarDistPix2=9.9210*pow(0.0918*((CurLidarDist-430)),0.5322)+41;			
+		}
+		if((CurLidarDist>(995+300)) && (CurLidarDist<(2019+300)))
+		{
+			CurLidarDistPix2=2.7994*pow(2.4136*((CurLidarDist-430)),0.4712)+41;			
+		}
+		
+*/
+
+        //-------------判断RRT产生的随机路径是否可行-------------
+        //---分层判断，如果可行继续拓展，否则停止拓展----
+
+        //---第一层判断，遇到不可行分支，该分支------------
+        //---------停止搜索，之后所有搜索树置0------------
+
+#if 1
+        //---第四层判断，遇到不可行分支，该分支------------
+        //---------停止搜索，之后所有搜索树置0------------
+        if (NumPathPlanningCnt > 3)
+        {
+            int tmpangle3 = 0;
+            int tmpdistance3 = 0;
+            float tmp_dx3 = 0.0;
+            float tmp_dy3 = 0.0;
+
+            int tmp_path4_ang[4] = {0};
+            int tmp_path4_new_ang[4] = {0};
+
+            float tmp_path4_dist_x[4] = {0.0};
+
+            float tmp_path4_dist_y[4] = {0.0};
+            float tmp_path4_dist[4] = {0.0};
+
+            for (m = 0; m < branch_num * branch_num * branch_num; m++)
+            {
+                for (i = 0; i < branch_num; i++) //第四层的搜索树
+                {
+                    //---每一层的角度---------
+                    //printf("m = %d,\n",m);
+                    /* 
+                        其中，m = Node_PerNum，这是由Node_PerNum决定的,Node_PerNum的值范围是1-27
+                        假设Node_PerNum = 9;那么m从0-8有值，9-26的部分对应的角度值和距离值就是0；
+                        则i = 3(0,1,2) m = 9;
+                        从第四层一共有i*m个节点     第四层一共由27个节点
+                        第三层一共有i*m/3个节点     第三层一共有9个节点
+                        第二层一共有i*m/9个节点     第二层一共有3个节点
+                        第一层一共有i个节点         第一层一共有3个节点 （第一层永远只有三个节点）
+                        
+                     */
+                    tmp_path4_ang[0] = PathPlanningAng[0][0][i];
+                    tmp_path4_ang[1] = PathPlanningAng[1][m / (branch_num * branch_num)][i];
+                    tmp_path4_ang[2] = PathPlanningAng[2][m / branch_num][i];
+                    tmp_path4_ang[3] = PathPlanningAng[3][m][i];
+
+                    tmp_path4_dist_x[0] = StepDistance * cos(tmp_path4_ang[0] * 3.14 / 1800);
+                    tmp_path4_dist_y[0] = StepDistance * sin(tmp_path4_ang[0] * 3.14 / 1800);
+                    tmp_path4_dist[0] = tmp_path4_dist_x[0] * tmp_path4_dist_x[0] + tmp_path4_dist_y[0] * tmp_path4_dist_y[0];
+                    tmp_path4_dist[0] = pow(tmp_path4_dist[0], 0.5);
+
+                    tmp_path4_dist_x[1] = tmp_path4_dist_x[0] + StepDistance * cos(tmp_path4_ang[1] * 3.14 / 1800);
+                    tmp_path4_dist_y[1] = tmp_path4_dist_y[0] + StepDistance * sin(tmp_path4_ang[1] * 3.14 / 1800);
+                    tmp_path4_dist[1] = tmp_path4_dist_x[1] * tmp_path4_dist_x[1] + tmp_path4_dist_y[1] * tmp_path4_dist_y[1];
+                    tmp_path4_dist[1] = pow(tmp_path4_dist[1], 0.5);
+
+                    tmp_path4_dist_x[2] = tmp_path4_dist_x[1] + StepDistance * cos(tmp_path4_ang[2] * 3.14 / 1800);
+                    tmp_path4_dist_y[2] = tmp_path4_dist_y[1] + StepDistance * sin(tmp_path4_ang[2] * 3.14 / 1800);
+                    tmp_path4_dist[2] = tmp_path4_dist_x[2] * tmp_path4_dist_x[2] + tmp_path4_dist_y[2] * tmp_path4_dist_y[2];
+                    tmp_path4_dist[2] = pow(tmp_path4_dist[2], 0.5);
+
+                    tmp_path4_dist_x[3] = tmp_path4_dist_x[2] + StepDistance * cos(tmp_path4_ang[3] * 3.14 / 1800);
+                    tmp_path4_dist_y[3] = tmp_path4_dist_y[2] + StepDistance * sin(tmp_path4_ang[3] * 3.14 / 1800);
+                    tmp_path4_dist[3] = tmp_path4_dist_x[3] * tmp_path4_dist_x[3] + tmp_path4_dist_y[3] * tmp_path4_dist_y[3];
+                    tmp_path4_dist[3] = pow(tmp_path4_dist[3], 0.5);
+
+                    for (n = 0; n < 4; n++)
+                    {
+                        //------每个步长终点相对于起点的位姿--------
+                        tmp_path4_new_ang[n] = acos(tmp_path4_dist_x[n] / tmp_path4_dist[n]) * 1800 / 3.14;
+                    }
+                    //tmp_dx3代表x的总长度，tmp_dy3代表y的总长度
+                    tmp_dx3 = StepDistance * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + cos((PathPlanningAng[2][m / branch_num][i]) * 3.14 / 1800) + cos((PathPlanningAng[3][m][i]) * 3.14 / 1800));
+                    tmp_dy3 = StepDistance * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + sin((PathPlanningAng[2][m / branch_num][i]) * 3.14 / 1800) + sin((PathPlanningAng[3][m][i]) * 3.14 / 1800));
+
+                    //tmp_dy3=pix[0]*sin(PathPlanningAng[0][0][i]*3.14/1800)+pix[0]*sin(PathPlanningAng[1][m/(branch_num*branch_num)][i]*3.14/1800)+pix[0]*sin(PathPlanningAng[2][m/branch_num][i]*3.14/1800)+pix[0]*sin(PathPlanningAng[3][m][i]*3.14/1800);
+                    //tmp_dx3=pix[0]*cos(PathPlanningAng[0][0][i]*3.14/1800)+pix[0]*cos(PathPlanningAng[1][m/(branch_num*branch_num)][i]*3.14/1800)+pix[0]*cos(PathPlanningAng[2][m/branch_num][i]*3.14/1800)+pix[0]*cos(PathPlanningAng[3][m][i]*3.14/1800);
+                    //tmpangle3是原点到第四节点的角度
+                    tmpangle3 = atan(tmp_dy3 / tmp_dx3) * 1800 / 3.14;
+                    if (tmpangle3 < 0)
+                    {
+                        tmpangle3 = tmpangle3 + 1800;
+                    }
+                    //	printf("tmp_dy3=%6.2f\n",tmp_dy3);
+                    //	printf("tmp_dx3=%6.2f\n",tmp_dx3);
+                    //斜边长
+                    tmpdistance3 = tmp_dy3 * tmp_dy3 + tmp_dx3 * tmp_dx3;
+                    tmpdistance3 = pow(tmpdistance3, 0.5);
+
+                    //	printf("tmpangle3=%d\n",tmpangle3);
+                    //	printf("tmppix3=%d\n",tmppix3);
+                    //	printf("\n");
+
+                    //--------障碍物膨胀处理------------------------------------
+                    //----保证每一个子段都不能碰到障碍物--------------
+                    for (j = 0; j < FilterCount2; j++)
+                    {
+                        //------tmp_path4_new_ang[0]每个步长终点相对于起点的位姿--------
+                        /* ********如果发现障碍物与机器人方向不超过15度且距离小于20厘米，就放弃这条rrt路径*************************** */
+                        if (abs(FilterLidarAng2[j] - tmp_path4_new_ang[0]) < ObsDeltaAng) //先判断障碍物角度
+                        {
+                            if (FilterLidarDistance[j] < tmp_path4_dist[0] + ExpandDis)
+                            {
+                                PathPlanningAng[0][0][i] = 0;
+                            }
+                        }
+                        if (abs(FilterLidarAng2[j] - tmp_path4_new_ang[1]) < ObsDeltaAng) //先判断障碍物角度
+                        {
+                            if (FilterLidarDistance[j] < tmp_path4_dist[1] + ExpandDis)
+                            {
+                                PathPlanningAng[1][m / (branch_num * branch_num)][i] = 0;
+                            }
+                        }
+                        if (abs(FilterLidarAng2[j] - tmp_path4_new_ang[2]) < ObsDeltaAng) //先判断障碍物角度
+                        {
+                            if (FilterLidarDistance[j] < tmp_path4_dist[2] + ExpandDis)
+                            {
+                                PathPlanningAng[2][m / branch_num][i] = 0;
+                            }
+                        }
+                        if (abs(FilterLidarAng2[j] - tmp_path4_new_ang[3]) < ObsDeltaAng) //先判断障碍物角度
+                        {
+                            if (FilterLidarDistance[j] < tmp_path4_dist[3] + ExpandDis)
+                            {
+                                PathPlanningAng[3][m][i] = 0;
+                            }
+                        }
+                    }
+
+                    //	if(PathPlanningAng[0][0][i] && PathPlanningAng[3][m][i] && 4==Layer)
+                    //角度不为0 表示满足要求的
+                    if (PathPlanningAng[3][m][i] && PathPlanningAng[2][m / branch_num][i] && PathPlanningAng[1][m / (branch_num * branch_num)][i] && PathPlanningAng[0][0][i] && 4 == Layer) //	if(PathPlanningAng[3][m][i] && 4==Layer)
+                    {
+                        OkPath.Layer_Num = 4;
+                        OkPath.Ok_Angle[OkPath.Ok_Cnt_PerLayer] = tmpangle3;
+                        //OkPath.Ok_Pix[OkPath.Ok_Cnt_PerLayer]=tmppix3;
+                        OkPath.Ok_Distance[OkPath.Ok_Cnt_PerLayer] = tmpdistance3;
+                        for (p = 0; p < 4; p++)
+                        {
+                            OkPath.Ok_PerLayer_Angle[OkPath.Ok_Cnt_PerLayer][p] = tmp_path4_ang[p];
+                        }
+                        //memcpy(OkPath.Ok_PerLayer_Angle,tmp_path4_ang,sizeof(tmp_path4_ang));
+                        //printf("tmppix3=%d\n",tmppix3);
+                        //printf("OkPath.Ok_Pix=%d\n",OkPath.Ok_Pix[OkPath.Ok_Cnt_PerLayer]);
+                        OkPath.Ok_Cnt_PerLayer++;
+                    }
+                    //	printf("\n");
+                }
+            }
+            if (4 == Layer && !RRT_Ok_Flag)
+            {
+                // ------将4层搜索树可行路径与目标角度差值排序--------
+
+                // ------将4层搜索树可行路径与目标距离差值排序--------
+                //-------------代价函数的计算-------------------------------------
+                /* 评估函数中代价函数 */
+                for (i = 0; i < OkPath.Ok_Cnt_PerLayer - 1; i++)
+                {
+                    for (j = i + 1; j < OkPath.Ok_Cnt_PerLayer; j++)
+                    {
+                        goalList(&dis, i, j, p);
+                    }
+                }
+
+                Best_OkPath.Best_Layer_Num = 4;
+                for (i = 0; i < OkPath.Ok_Cnt_PerLayer; i++)
+                {
+                    //----路径选择条件:需要优化--------
+                    //if(OkPath.Ok_Pix[i]>tmpminpix  && (((OkPath.Ok_Angle[i]>OkPathAngle[0])&&(OkPath.Ok_Angle[i]<OkPathAngle[1])) || ((OkPath.Ok_Angle[i]>OkPathAngle[2])&&(OkPath.Ok_Angle[i]<OkPathAngle[3]))))
+                    //if(OkPath.Ok_Distance[i]>(tmpmaxdistance+tmpmindistance)/2  && ((OkPath.Ok_Angle[i]>OkPathAngle[0])&&(OkPath.Ok_Angle[i]<OkPathAngle[1])))
+                    /********如果规划的RRT斜边长大于最近的障碍物距离*************/
+                    if (OkPath.Ok_Distance[i] > tmpmindistance)
+                    {
+                        Best_OkPath.Best_Ok_Angle[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Angle[i];
+                        //Best_OkPath.Best_Ok_Pix[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Pix[i];
+                        Best_OkPath.Best_Ok_Distance[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Distance[i];
+                        for (p = 0; p < 4; p++)
+                        {
+                            Best_OkPath.Best_Ok_PerLayer_Ang[Best_OkPath.Best_Ok_Cnt][p] = OkPath.Ok_PerLayer_Angle[i][p];
+                        }
+                        Best_OkPath.Best_Ok_Cnt++;
+                        // i = OkPath.Ok_Cnt_PerLayer - 1;
+                    }
+                    // printf("i = %d\n", i);
+                }
+
+                for (i = 0; i < Best_OkPath.Best_Ok_Cnt; i++)
+                {
+                    for (j = 0; j < 4; j++)
+                    {
+                        Cord_PerLayer.Cordinate_Ang[j][0] = Best_OkPath.Best_Ok_PerLayer_Ang[i][j];
+                        printf("Cordinate_Ang[%d][0]=%d\n", j, Cord_PerLayer.Cordinate_Ang[j][0]);
+                    }
+                    //printf("Best_Ok_PerLayer_Ang[%d][%d]=%d\n",i,j,Best_OkPath.Best_Ok_PerLayer_Ang[i][j]);
+
+                    printf("\n");
+                }
+                /***********stepdis[0] = 300*******************/
+                Cord_PerLayer.Cordinate_X[0][0] = stepdis[0] * cos(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800);
+                Cord_PerLayer.Cordinate_Y[0][0] = stepdis[0] * sin(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800);
+
+                Cord_PerLayer.Cordinate_X[1][0] = stepdis[0] * (cos(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800));
+                Cord_PerLayer.Cordinate_Y[1][0] = stepdis[0] * (sin(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800));
+
+                Cord_PerLayer.Cordinate_X[2][0] = stepdis[0] * (cos(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[2][0] * 3.14 / 1800));
+                Cord_PerLayer.Cordinate_Y[2][0] = stepdis[0] * (sin(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[2][0] * 3.14 / 1800));
+
+                Cord_PerLayer.Cordinate_X[3][0] = stepdis[0] * (cos(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[2][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[3][0] * 3.14 / 1800));
+                Cord_PerLayer.Cordinate_Y[3][0] = stepdis[0] * (sin(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[2][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[3][0] * 3.14 / 1800));
+
+                //--------赋值用于机器人路径------------------------------
+                //Cord_PerLayer.Cordinate_Ang[0][0]=Best_OkPath.Best_Ok_PerLayer_Ang[Best_OkPath.Best_Ok_Cnt][0];
+
+                //------判断规划好的路径上是否出现新的障碍物----
+                //--若出现新的障碍，重新规划路径---------------------
+                /*	for(i=0;i<FilterCount;i++)	
+				{
+					//r=FilterLidarDistPix[i];
+					if(abs(Best_OkPath.Best_Ok_Angle[0]-FilterLidarAng[i])<20 && Best_OkPath.Best_Ok_Pix[0]>FilterLidarDistPix[i])	
+					{
+						printf("need planning path again........\n");
+
+						Circle_num=0;
+						childrandcnt=0;				
+						planning_cnt=0;
+						RandRito=1;
+						
+						NumPathPlanningCnt=0;
+						memset(PathPlanningAng,0,sizeof(int)*6*100*10);
+						memset(PathPlanningPix,0,sizeof(int)*6*100*10);
+						isOkPath=0;						
+					}
+				}
+				
+			}*/
+
+                //-----判断机器人开始运动前是否有可行的RRT路径---
+                //------没有就重新规划-----------------------------------------
+                if (!Best_OkPath.Best_Ok_Cnt)
+                {
+                    RRT_Ok_Flag = 0;
+
+                    Circle_num = 0;
+                    childrandcnt = 0;
+                    planning_cnt = 0;
+                    RandRito = 1;
+
+                    NumPathPlanningCnt = 0;
+                    memset(PathPlanningAng, 0, sizeof(int) * 6 * 100 * 10);
+                    memset(PathPlanningPix, 0, sizeof(int) * 6 * 100 * 10);
+                    isOkPath = 0;
+                }
+                if (Best_OkPath.Best_Ok_Cnt)
+                {
+                    RRT_Ok_Flag = 1;
+                }
+            }
+        }
+        //printf("RRT_Ok_Flag=%d\n",RRT_Ok_Flag);
+        if (Arrived_ChildAim_Flag)
+        {
+            RRT_Ok_Flag = 0;
+
+            Circle_num = 0;
+            childrandcnt = 0;
+            planning_cnt = 0;
+            RandRito = 1;
+
+            NumPathPlanningCnt = 0;
+            memset(PathPlanningAng, 0, sizeof(int) * 6 * 100 * 10);
+            memset(PathPlanningPix, 0, sizeof(int) * 6 * 100 * 10);
+            isOkPath = 0;
+            Arrived_ChildAim_Flag = 0;
+        }
+
+        //---第五层判断，遇到不可行分支，该分支------------
+        //---------停止搜索，之后所有搜索树置0------------
+
+        if (NumPathPlanningCnt > 4)
+        {
+            int tmpangle4 = 0;
+            int tmppix4 = 0;
+            float tmp_dx4 = 0.0;
+            float tmp_dy4 = 0.0;
+
+            for (m = 0; m < branch_num * branch_num * branch_num * branch_num; m++)
+            {
+                for (i = 0; i < branch_num; i++) //第四层的搜索树
+                {
+                    tmp_dy4 = pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / (branch_num * branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[2][m / branch_num * branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[4][m][i] * 3.14 / 1800);
+                    tmp_dx4 = pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / (branch_num * branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[2][m / branch_num * branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[4][m][i] * 3.14 / 1800);
+                    tmpangle4 = atan(tmp_dy4 / tmp_dx4) * 1800 / 3.14;
+                    if (tmpangle4 < 0)
+                    {
+                        tmpangle4 = tmpangle4 + 1800;
+                    }
+                    //	printf("tmp_dy3=%6.2f\n",tmp_dy3);
+                    //	printf("tmp_dx3=%6.2f\n",tmp_dx3);
+
+                    tmppix4 = tmp_dy4 * tmp_dy4 + tmp_dx4 * tmp_dx4;
+                    tmppix4 = pow(tmppix4, 0.5);
+
+                    //	printf("tmpangle3=%d\n",tmpangle3);
+                    //	printf("tmppix3=%d\n",tmppix3);
+                    //	printf("\n");
+                    for (j = 0; j < FilterCount; j++)
+                    {
+                        if (abs(FilterLidarAng[j] - tmpangle4) < ObsDeltaAng) //先判断障碍物角度
+                        {
+                            if (FilterLidarDistPix[j] < tmppix4)
+                            {
+                                for (l = 4; l < NumPathPlanningCnt; l++)
+                                {
+                                    PathPlanningAng[l][m][i] = 0;
+                                }
+                                obs_search_cnt++;
+                            }
+                        }
+                    }
+                    if (PathPlanningAng[4][m][i] && 5 == Layer) //角度不为0 表示满足要求的
+                    {
+                        OkPath.Layer_Num = 4;
+                        OkPath.Ok_Angle[OkPath.Ok_Cnt_PerLayer] = tmpangle4;
+                        OkPath.Ok_Pix[OkPath.Ok_Cnt_PerLayer] = tmppix4;
+                        OkPath.Ok_Cnt_PerLayer++;
+                    }
+                }
+            }
+            if (5 == Layer)
+            {
+                int tmp5_angle = 0;
+                int tmp5_pix = 0;
+
+                // ------将5层搜索树可行路径与目标角度差值排序--------
+                for (i = 0; i < OkPath.Ok_Cnt_PerLayer - 1; i++)
+                {
+                    for (j = i + 1; j < OkPath.Ok_Cnt_PerLayer; j++)
+                    {
+                        if (abs(OkPath.Ok_Angle[i] - robot_temp[1].angle) > abs(OkPath.Ok_Angle[j] - robot_temp[1].angle))
+                        {
+                            tmp5_angle = OkPath.Ok_Angle[i];
+                            OkPath.Ok_Angle[i] = OkPath.Ok_Angle[j];
+                            OkPath.Ok_Angle[j] = tmp5_angle;
+
+                            tmp5_pix = OkPath.Ok_Pix[i];
+                            OkPath.Ok_Pix[i] = OkPath.Ok_Pix[j];
+                            OkPath.Ok_Pix[j] = tmp5_pix;
+                        }
+                    }
+                }
+                //	printf("robot_temp[1].angle=%d\n",robot_temp[1].angle);
+                //	printf("OkPath.Ok_Angle[0]=%d\n",OkPath.Ok_Angle[0]);
+                //	printf("OkPath.Ok_Pix[0]=%d\n",OkPath.Ok_Pix[0]);
+                //	printf("\n");
+
+                Best_OkPath.Best_Layer_Num = 5;
+                for (i = 0; i < OkPath.Ok_Cnt_PerLayer; i++)
+                {
+                    if (OkPath.Ok_Pix[i] > tmpminpix)
+                    {
+                        Best_OkPath.Best_Ok_Angle[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Angle[i];
+                        Best_OkPath.Best_Ok_Pix[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Pix[i];
+                        Best_OkPath.Best_Ok_Cnt++;
+                        i = OkPath.Ok_Cnt_PerLayer - 1;
+                    }
+                }
+                printf("Best_OkPath.Best_Ok_Pix=%d\n", Best_OkPath.Best_Ok_Pix[0]);
+                printf("tmpminpix=%d\n", tmpminpix);
+                //printf("Best_OkPath.Best_Ok_Cnt=%d\n",Best_OkPath.Best_Ok_Cnt);
+                //--------规划层数为5时画出满足的RRT路径-------------------------------
+                for (i = 0; i < Best_OkPath.Best_Ok_Cnt; i++)
+                {
+                    r = Best_OkPath.Best_Ok_Pix[i];
+                    for (j = 0; j < r; j++)
+                    {
+                        y = j * sin(Best_OkPath.Best_Ok_Angle[i] * 3.14 / 1800);
+                        x = j * cos(Best_OkPath.Best_Ok_Angle[i] * 3.14 / 1800);
+
+                        addr[cell(x, y, 0)] = 0;
+                        addr[cell(x, y, 1)] = 0;
+                        addr[cell(x, y, 2)] = 255;
+
+                        //	printf("j=%d\n,y=%d,x=%d,r=%d",j,y,x,r);
+                        //	printf("Best_OkPath.Best_Ok_Cnt=%d\n",Best_OkPath.Best_Ok_Cnt);
+                        //	printf("...................\n");
+                    }
+                }
+            }
+        }
+#endif
+
+        //	printf("obs_search_cnt=%d\n",obs_search_cnt);
+        obs_search_cnt = 0;
+
+        //-------------------显示RRT随机路径-----------------------------
+        if (0 == Display_Flag)
+        {
+            switch (NumPathPlanningCnt)
+            {
+            case 5:
+                p = branch_num * branch_num * branch_num * branch_num;
+                q = branch_num * branch_num * branch_num;
+                l = branch_num * branch_num;
+                for (m = 0; m < p; m++)
+                {
+                    for (i = 0; i < branch_num; i++)
+                    {
+                        for (j = pix[3]; j < pix[4]; j++)
+                        {
+                            y = (j - pix[3]) * sin((PathPlanningAng[4][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[2][m / l][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / q][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                            x = (j - pix[3]) * cos((PathPlanningAng[4][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[2][m / l][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / q][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
+
+                            addr[cell(x, y, 0)] = 255;
+                            addr[cell(x, y, 1)] = 0;
+                            addr[cell(x, y, 2)] = 0;
+                        }
+                    }
+                }
+            case 4:
+                for (m = 0; m < branch_num * branch_num * branch_num; m++)
+                {
+                    for (i = 0; i < branch_num; i++)
+                    {
+                        Cord_PerLayer.Cordinate_X[3][i] = stepdis[0] * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + cos((PathPlanningAng[2][m / branch_num][i]) * 3.14 / 1800) + cos((PathPlanningAng[3][m][i]) * 3.14 / 1800));
+                        Cord_PerLayer.Cordinate_Y[3][i] = stepdis[0] * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + sin((PathPlanningAng[2][m / branch_num][i]) * 3.14 / 1800) + sin((PathPlanningAng[3][m][i]) * 3.14 / 1800));
+                        Cord_PerLayer.Cordinate_Ang[3][i] = PathPlanningAng[3][m][i];
+
+                        for (j = pix[2]; j < pix[3]; j++)
+                        {
+                            y = (j - pix[2]) * sin((PathPlanningAng[3][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[2][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                            x = (j - pix[2]) * cos((PathPlanningAng[3][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[2][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
+
+                            addr[cell(x, y, 0)] = 255;
+                            addr[cell(x, y, 1)] = 255;
+                            addr[cell(x, y, 2)] = 0;
+                        }
+                    }
+                }
+
+            case 3:
+                for (m = 0; m < branch_num * branch_num; m++)
+                {
+                    for (i = 0; i < branch_num; i++) //选取根节点
+                    {
+                        Cord_PerLayer.Cordinate_X[2][i] = stepdis[0] * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos((PathPlanningAng[1][m / branch_num][i]) * 3.14 / 1800) + cos((PathPlanningAng[2][m][i]) * 3.14 / 1800));
+                        Cord_PerLayer.Cordinate_Y[2][i] = stepdis[0] * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m / branch_num][i] * 3.14 / 1800) + sin((PathPlanningAng[2][m][i]) * 3.14 / 1800));
+                        Cord_PerLayer.Cordinate_Ang[2][i] = PathPlanningAng[2][m][i];
+
+                        for (j = pix[1]; j < pix[2]; j++) //绘制直线
+                        {
+                            y = (j - pix[1]) * sin((PathPlanningAng[2][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                            x = (j - pix[1]) * cos((PathPlanningAng[2][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
+
+                            addr[cell(x, y, 0)] = 255;
+                            addr[cell(x, y, 1)] = 0;
+                            addr[cell(x, y, 2)] = 0;
+                        }
+                    }
+                }
+                //break;
+            case 2:
+                for (m = 0; m < branch_num * 1; m++)
+                {
+                    for (i = 0; i < branch_num; i++) //第二层
+                    {
+                        Cord_PerLayer.Cordinate_X[1][i] = stepdis[0] * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos((PathPlanningAng[1][m][i]) * 3.14 / 1800));
+                        Cord_PerLayer.Cordinate_Y[1][i] = stepdis[0] * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m][i] * 3.14 / 1800));
+                        Cord_PerLayer.Cordinate_Ang[1][i] = PathPlanningAng[1][m][i];
+
+                        for (j = 0; j < pix[1]; j++)
+                        {
+                            y = (j)*sin((PathPlanningAng[1][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                            x = (j)*cos((PathPlanningAng[1][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
+
+                            addr[cell(x, y, 0)] = 0;
+                            addr[cell(x, y, 1)] = 255;
+                            addr[cell(x, y, 2)] = 0;
+                        }
+                    }
+                }
+                //break;
+            case 1:
+
+                for (i = 0; i < branch_num; i++)
+                {
+
+                    if ((stepdis[0] > 150) && (stepdis[0] < (618 + 300)))
+                    {
+                        pix[0] = 17.6132 * pow(0.0099 * ((stepdis[0] - 300)), 0.8712) + 41;
+                    }
+
+                    Cord_PerLayer.Cordinate_X[0][i] = stepdis[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                    Cord_PerLayer.Cordinate_Y[0][i] = stepdis[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                    Cord_PerLayer.Cordinate_Ang[0][i] = PathPlanningAng[0][0][i];
+
+                    //	printf("Cord_PerLayer.Cordinate_X[0][%d]=%d\n",i,Cord_PerLayer.Cordinate_X[0][i]);
+                    //	printf("Cord_PerLayer.Cordinate_Y[0][%d]=%d\n",i,Cord_PerLayer.Cordinate_Y[0][i]);
+                    //	printf("\n");
+
+                    for (j = 0; j < pix[0]; j++)
+                    {
+                        y = j * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
+                        x = j * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
+
+                        addr[cell(x, y, 0)] = 255;
+                        addr[cell(x, y, 1)] = 0;
+                        addr[cell(x, y, 2)] = 0;
+
+                        //printf("pix[0]=%d\n", pix[0]);
+                    }
+                }
+            case 0:
+                break;
+            }
+        }
+
+        /*	if(NumPathPlanningCnt<Layer)
+		{				
+			Node_PerNum=pow(branch_num,Circle_num+1);	//需要拓展的搜索节点
+			printf("Node_PerNum=%d\n",Node_PerNum);
+			isOkPath=0;	
+			Circle_num++;
+		}	
+		*/
+    }
+    //--------规划层数为4时画出满足的RRT分段折线路径-------------------------------
+#if 1
+
+    if (Best_OkPath.Best_Ok_Cnt != 0)
+    { //防止数据在循环中被清0，使用中间变量来承接rrt的数据，只有当新的数据来临的时候，中间变量才会更新
+        Best_OkPath.showBest_Ok_Cnt = 0;
+        memset(Best_OkPath.showBest_Ok_PerLayer_Ang, 0, sizeof(Best_OkPath.showBest_Ok_PerLayer_Ang));
+        for (i = 0; i < Best_OkPath.Best_Ok_Cnt; i++)
+        {
+            for (j = 0; j < 4; j++)
+            {
+                Best_OkPath.showBest_Ok_PerLayer_Ang[i][j] = Best_OkPath.Best_Ok_PerLayer_Ang[i][j];
+            }
+            Best_OkPath.showBest_Ok_Cnt++;
+        }
+    }
+    //使用中间变量来表达rrt路径
+    for (i = 0; i < Best_OkPath.showBest_Ok_Cnt; i++)
+    {
+        for (j = 0; j < pix[0]; j++)
+        {
+            y = j * sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800);
+            x = j * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800);
+
+            addr[cell(x, y, 0)] = 255;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 0;
+        }
+        for (j = 0; j < pix[0]; j++)
+        {
+            y = j * sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + pix[0] * sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800);
+            x = j * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + pix[0] * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800);
+
+            addr[cell(x, y, 0)] = 0;
+            addr[cell(x, y, 1)] = 255;
+            addr[cell(x, y, 2)] = 0;
+        }
+        for (j = 0; j < pix[0]; j++)
+        {
+            y = j * sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][2] * 3.14 / 1800) + pix[0] * (sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800));
+            x = j * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][2] * 3.14 / 1800) + pix[0] * (cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800));
+
+            addr[cell(x, y, 0)] = 255;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 0;
+        }
+        for (j = 0; j < pix[0]; j++)
+        {
+            y = j * sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][3] * 3.14 / 1800) + pix[0] * (sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][2] * 3.14 / 1800) + sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + sin(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800));
+            x = j * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][3] * 3.14 / 1800) + pix[0] * (cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][2] * 3.14 / 1800) + cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800));
+
+            addr[cell(x, y, 0)] = 0;
+            addr[cell(x, y, 1)] = 255;
+            addr[cell(x, y, 2)] = 0;
+        }
+    }
+#endif
+
+    //--------显示可行路径的边界---------------------------------
+    for (i = 0; i < OkPathCnt; i++)
+    {
+        r = OkPathDistPix[i];
+
+        for (d = -8; d < 8; d++)
+        {
+            if (OkPathAngle[i] < 900)
+            {
+                y = r * sin(OkPathAngle[i] * 3.14 / 1800) + 1 + 5 * cos(OkPathAngle[i] * 3.14 / 1800) + d;
+                x = r * cos(OkPathAngle[i] * 3.14 / 1800) - 5;
+            }
+            if (OkPathAngle[i] > 900)
+            {
+                y = r * sin(OkPathAngle[i] * 3.14 / 1800) + 1 + d;
+                x = r * cos(OkPathAngle[i] * 3.14 / 1800) + 5 * sin(OkPathAngle[i] * 3.14 / 1800);
+            }
+
+            if (!startflag)
+            {
+                addr[cell(x, y, 0)] = 0;
+                addr[cell(x, y, 1)] = 0;
+                addr[cell(x, y, 2)] = 0;
+            }
+        }
+
+        //	printf("OkPathCnt=%d\n",OkPathCnt/2);
+        //	printf("OkPathAngle[%d]=%d\n",i,OkPathAngle[i]);
+        //	printf("OkPathDistPix[%d]=%d\n",i,OkPathDistPix[i]);
+        //	printf("\n");
+    }
+
+    //----------雷达扫到的近似边界点-------------------------------
+
+    //PicEdgePixCnt=AheadCount;
+    //memcpy(PicEdgePix,CurAheadPix,sizeof(CurAheadPix));
+    //memcpy(PicEdgeAngle,CurAheadAngle,sizeof(CurAheadAngle));
+
+    /*	if(AheadCount>1)
+	{
+		//printf("AheadCount=%d\n",AheadCount);	
+		for(i=0;i<AheadCount;i++)
+		{	
+		
+				tmp2=((3600+900-CurAheadAngle[i]) % 3600);
+				printf("tmp2=%d\n",tmp2);
+
+			for(d=-3;d<3;d++)
+			{									
+				r=CurAheadPix[i];
+				y=r*sin(tmp2*3.14 / 1800)+d;
+				x=r*cos(tmp2* 3.14  / 1800);
+				addr[cell(x,y,0)]=255;
+				addr[cell(x,y,1)]=0;
+				addr[cell(x,y,2)]=0;
+			}	
+			//printf("CurAheadAngle=%d\n",CurAheadAngle[i]);
+			//printf("CurAheadPix=%d\n",CurAheadPix[i]);
+		}
+	}
+	*/
+    //-------------------------------------------------------------------------
+
+    AimCount = 0;
+    memset(CurLidarAng, 0, 1024);
+    memset(CurLidarDistPix, 0, 1024);
+
+    TrueAimCount = 0;
+    memset(TrueCurLidarDistPix, 0, 1024);
+    memset(TrueCurLidarAng, 0, 1024);
+
+    TrueAimCntDis = 0;
+    memset(TrueCurLidarDistance, 0, 1024);
+    memset(TrueCurLidarAng2, 0, 1024);
+
+    FilterCount = 0;
+    memset(FilterLidarDistPix, 0, 1024);
+    memset(FilterLidarAng, 0, 1024);
+    FilterCount2 = 0;
+    memset(FilterLidarDistance, 0, 1024);
+    memset(FilterLidarAng2, 0, 1024);
+
+    LidarEdgeCnt = 0;
+    memset(LidarEdgeDistPix, 0, 1024);
+    memset(LidarEdgeDistance, 0, 1024);
+    memset(LidarEdgeAngle, 0, 1024);
+
+    LidarOkPathMidCnt = 0;
+    memset(LidarOkPathMidAng, 0, 10);
+    memset(LidarOkPathMidPix, 0, 10);
+
+    //NumPathPlanningCnt=0;
+    //memset(PathPlanningAng,0,sizeof(int)*6*256*10);
+    //memset(PathPlanningPix,0,sizeof(int)*6*256*10);
+
+    //---------------------------------------------------------------------------
+
+    /*angle=0.01745*30;//0.5235
+	for(r=0;r<275;r++)
+	{
+		y=r*sin(angle);
+		x=r*cos(angle);
+		addr[cell(x,y,0)]=255;
+		addr[cell(x,y,1)]=255;
+		addr[cell(x,y,2)]=255;
+	}
+
+	angle=0.01745*4+1.5708;//0.0698
+	for(r=0;r<275;r++)
+	{
+		y=r*sin(angle);
+		x=r*cos(angle);
+		addr[cell(x,y,0)]=255;
+		addr[cell(x,y,1)]=255;
+		addr[cell(x,y,2)]=255;
+	}
+	*/
+    //------------------------------------------------------------------------
+
+    //------------------------屏幕上画圆-----------------------------------
+    for (angle = 0; angle < 6.283; angle = angle + 0.1)
+    {
+        r = 20;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 255;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 40;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 0;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 0;
+    }
+
+    for (angle = 0; angle < 6.283; angle = angle + 0.01)
+    {
+        r = 100;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 0;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 125;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 255;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 150;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 0;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 175;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 255;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 200;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 0;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 225;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 255;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 250;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 0;
+        addr[cell(x, y, 1)] = 255;
+        addr[cell(x, y, 2)] = 255;
+
+        r = 275;
+        y = r * sin(angle);
+        x = r * cos(angle);
+        addr[cell(x, y, 0)] = 0;   //b
+        addr[cell(x, y, 1)] = 255; //g
+        addr[cell(x, y, 2)] = 0;   //r
+    }
+    //---------------------------------------------------------------------
+
+    //-------------画目标物----------------------------------------
+
+    for (d = 0; d < 2; d++)
+
+        for (angle = 0; angle < 6.283; angle = angle + 0.05)
+        {
+            r = get_r(robot_temp[1].count) + d;
+            y = r * sin(angle) + robot_temp[1].rad * sin((float)(robot_temp[1].angle / 572.95));
+            x = r * cos(angle) + robot_temp[1].rad * cos((float)(robot_temp[1].angle / 572.95));
+            addr[cell(x, y, 0)] = d * 100;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
+
+            //--------------------------------------
+            r = get_r(robot_temp[2].count) + d;
+            y = r * sin(angle) + robot_temp[2].rad * sin((float)(robot_temp[2].angle / 572.95));
+            x = r * cos(angle) + robot_temp[2].rad * cos((float)(robot_temp[2].angle / 572.95));
+            addr[cell(x, y, 0)] = d * 100;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
+
+            //--------------------------------------
+            //当实验室搭载了更多机器人的时候，可以开启下列代码
+            /*             r = get_r(robot_temp[3].count) + d;
+            y = r * sin(angle) + robot_temp[3].rad * sin((float)(robot_temp[3].angle / 572.95));
+            x = r * cos(angle) + robot_temp[3].rad * cos((float)(robot_temp[3].angle / 572.95));
+            addr[cell(x, y, 0)] = d * 100;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
+
+            //--------------------------------------
+
+            r = get_r(robot_temp[4].count) + d;
+            y = r * sin(angle) + robot_temp[4].rad * sin((float)(robot_temp[4].angle / 572.95));
+            x = r * cos(angle) + robot_temp[4].rad * cos((float)(robot_temp[4].angle / 572.95));
+            addr[cell(x, y, 0)] = d * 100;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
+
+            //--------------------------------------
+
+            r = get_r(robot_temp[5].count) + d;
+            y = r * sin(angle) + robot_temp[5].rad * sin((float)(robot_temp[5].angle / 572.95));
+            x = r * cos(angle) + robot_temp[5].rad * cos((float)(robot_temp[5].angle / 572.95));
+            addr[cell(x, y, 0)] = d * 100;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
+
+            r = get_r(robot_temp[6].count) + d;
+            y = r * sin(angle) + robot_temp[6].rad * sin((float)(robot_temp[6].angle / 572.95));
+            x = r * cos(angle) + robot_temp[6].rad * cos((float)(robot_temp[6].angle / 572.95));
+            addr[cell(x, y, 0)] = d * 100;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255; */
+        }
+
+    //-----------------模拟雷达扫描画面---------------------------------------
+    /*
+	static float scan=0;
+
+	for(angle=0;angle<=6.283+0.005;angle=angle+0.005)
+	{
+		for(r=0;r<275;r=r+1)
+		{
+			y=(r*sin(angle));
+			x=(r*cos(angle));
+			//----------雷达扫描线-------------
+			if(abs(scan*100-angle*100)<3)
+			{
+				addr[cell(x,y,0)]=0;
+				addr[cell(x,y,1)]=0;
+				addr[cell(x,y,2)]=255;
+			}
+		}
+	}	 
+	scan=scan+0.4;
+
+	if(scan>=6.28)
+		scan=0;
+
+*/
+    //-------------------------------------------------------------------------
 }
 
-//two control points 涓や釜鎺у埗鐐�
-Point2D PointOnCubicBezier(Point2D *cp, float t)
-{
-    float ax, bx, cx;
-    float ay, by, cy;
-    float tSquared, tCubed;
-    Point2D result;
-    /* 鐠侊紕鐣绘径姘躲€嶅蹇曢兇閺侊拷 */
-    cx = 3.0 * (cp[1].x - cp[0].x);
-    bx = 3.0 * (cp[2].x - cp[1].x) - cx;
-    ax = cp[3].x - cp[0].x - cx - bx;
-    cy = 3.0 * (cp[1].y - cp[0].y);
-    by = 3.0 * (cp[2].y - cp[1].y) - cy;
-    ay = cp[3].y - cp[0].y - cy - by;
-    /* 鐠侊紕鐣籺娴ｅ秶鐤嗛惃鍕仯閸婏拷 */
-    tSquared = t * t;
-    tCubed = tSquared * t;
-    result.x = (ax * tCubed) + (bx * tSquared) + (cx * t) + cp[0].x;
-    result.y = (ay * tCubed) + (by * tSquared) + (cy * t) + cp[0].y;
-    return result;
-}
-/* ComputeBezier 娴犮儲甯堕崚鍓佸仯 cp 閹碘偓娴溠呮晸閻ㄥ嫭娲哥痪璺ㄥ仯閿涘苯锝為崗锟� Point2D 缂佹挻鐎弫鎵矋閵嗭拷 
-鐠嬪啰鏁ら弬鐟扮箑妞よ鍨庨柊宥堝喕婢剁喓娈戠粚娲？娴犮儰绶垫潏鎾冲毉閿涳拷<sizeof(Point2D) numberOfPoints> */
-void ComputeDoubleBezier(Point2D *cp, int numberOfPoints, Point2D *curve)
-{
-    float dt;
-    int i;
-    dt = 1.0 / (numberOfPoints - 1);
-    for (i = 0; i < numberOfPoints; i++)
-        curve[i] = PointOnCubicBezier(cp, i * dt);
-}
-
+//=========================================================================
 int rgb(unsigned char *addr, int y, int x)
 {
     //================================================================
@@ -152,7 +1626,7 @@ int rgb(unsigned char *addr, int y, int x)
             return 3;
         }
         //----------------------------------------------------------------------------
-        if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 40 && addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 50 && addr[cell(x, y, 1)] > 110 && addr[cell(x, y, 2)] > 120 && addr[cell(x, y, 0)] < 110) //yellow
+        if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 20 && addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 20 && addr[cell(x, y, 1)] > 60 && addr[cell(x, y, 2)] > 60 && addr[cell(x, y, 0)] < 190) //yellow
         {
             return 4;
         }
@@ -163,7 +1637,6 @@ int rgb(unsigned char *addr, int y, int x)
             return 5;
         }
     }
-
     //=======================================================================
     if (DAY == 0)
     {
@@ -199,7 +1672,7 @@ int rgb(unsigned char *addr, int y, int x)
     }
 
     //=======================================================================
-    if (DAY == 2) //鏆傚畾閲囩敤璇ユ柟寮忓垽鏂壂鎻忕殑鏄笉鏄粍鑹�
+    if (DAY == 2)
     {
         //----------------------------------------------------------------------------
         if (addr[cell(x, y, 2)] > addr[cell(x, y, 1)] + 40 &&
@@ -220,8 +1693,9 @@ int rgb(unsigned char *addr, int y, int x)
             return 3;
         }
         //----------------------------------------------------------------------------
-        if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 30 &&
-            addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 30 && addr[cell(x, y, 2)] >= 115) //yellow	0 1 2 鍒嗗埆bgr
+
+        if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 15 &&
+            addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 20 && addr[cell(x, y, 2)] >= 110) //yellow
         {
             return 4;
         }
@@ -231,987 +1705,12 @@ int rgb(unsigned char *addr, int y, int x)
         {
             return 5;
         }
-
-        //---------------------娣诲姞鐨�--------------------------
-        if (addr[cell(x, y, 0)] - addr[cell(x - 1, y, 0)] > 20 || addr[cell(x, y, 1)] - addr[cell(x - 1, y, 1)] > 20 || addr[cell(x, y, 2)] - addr[cell(x - 1, y, 2)] > 20)
-        {
-            return 6;
-        }
     }
 
     //=================================================================
     return 0;
 
 } //========================================================================
-
-int get_r(int rad)
-{
-
-    if (rad < 20)
-    {
-        return rad / 4 + 5;
-    }
-
-    if (rad >= 20 && rad < 30)
-    {
-        return rad / 4 + 4;
-    }
-
-    if (rad >= 30 && rad < 40)
-    {
-        return rad / 4 + 3;
-    }
-
-    if (rad >= 40 && rad < 50)
-    {
-        return rad / 4 + 2;
-    }
-
-    if (rad >= 50 && rad < 60)
-    {
-        return rad / 4 + 1;
-    }
-
-    if (rad >= 60 && rad < 70)
-    {
-        return rad / 4 + 0;
-    }
-
-    if (rad >= 70 && rad < 80)
-    {
-        return rad / 4 - 1;
-    }
-
-    if (rad >= 80 && rad < 90)
-    {
-        return rad / 4 - 2;
-    }
-
-    if (rad >= 90 && rad < 100)
-    {
-        return rad / 4 - 3;
-    }
-
-    if (rad >= 100)
-    {
-        return rad / 4 - 4;
-    }
-
-    return 0;
-}
-//=========================================================================
-void min_cir(unsigned char *addr)
-{
-    int y = 0;
-    int x = 0;
-    float angle = 0;
-    int r = 0;
-    int d = 0;
-    int d_x = 0;
-    int d_y = 0;
-    int m = 0, n = 0;
-    int i = 0;
-    int j = 0;
-    int l = 0;
-    int p = 0;
-    int s = 0, q = 0;
-    float theta = 0.0;
-    float tmp_rollwindow_r = 0.0;
-
-    //--------------------鐢荤洿瑙掑潗鏍囩郴-------------------------------
-    x = 0;
-    for (y = -275; y < 275; y++)
-    {
-        addr[cell(x, y, 0)] = 255;
-        addr[cell(x, y, 1)] = 255;
-        addr[cell(x, y, 2)] = 255;
-    }
-
-    y = 0;
-    for (x = -275; x < 275; x++)
-    {
-        addr[cell(x, y, 0)] = 255;
-        addr[cell(x, y, 1)] = 255;
-        addr[cell(x, y, 2)] = 255;
-    }
-
-    //----------鍒ゆ柇lidar閲囬泦鍒扮殑闅滅鐗╃偣鏄惁灞炲疄(婊ゆ尝)-------
-    //-------杩愯鍒板瓙鐩爣鐐硅繃绋嬩腑妫€娴嬫鍓嶆柟鏄惁鏈夐殰纰�--------
-
-    if (AimCount > 0)
-    {
-
-        for (i = 0; i < AimCount; i++)
-        {
-            if (abs((3600 + 900 - CurLidarAng[i]) % 3600 - 900) < 10 && CurLidarDistance[i] < (SafeDistance - Safe_Dis_Sub) && CurLidarDistance[i] != 258)
-            {
-                Next_UnSafe_Flag = 1; //涓嶅畨鍏�
-                printf("CurLidarAng=%d\n", (3600 + 900 - CurLidarAng[i]) % 3600);
-                printf("CurLidarDistance=%d\n", CurLidarDistance[i]);
-                printf("\n");
-            }
-        }
-        //printf("Next_UnSafe_Flag=%d\n",Next_UnSafe_Flag);
-        if (Lidar_Circle_Cnt < 7)
-        {
-            for (i = 0; i < AimCount; i++)
-            {
-                Lidar_Data.Lidar_Data_Dis[Lidar_Data.Lidar_Data_Cnt] = CurLidarDistance[i];
-                Lidar_Data.Lidar_Data_Ang[Lidar_Data.Lidar_Data_Cnt] = CurLidarAng[i];
-                Lidar_Data.Lidar_Data_Pix[Lidar_Data.Lidar_Data_Cnt] = CurLidarDistPix[i];
-                Lidar_Data.Lidar_Data_Cnt++;
-            }
-        }
-
-        //	printf("AimCount=%d\n",AimCount);
-        //	printf("Lidar_Circle_Cnt=%d\n",Lidar_Circle_Cnt);
-        if (Lidar_Circle_Cnt > 5)
-        {
-            Lidar_Ok_Flag = 1;
-            //	printf("Lidar_Data.Lidar_Data_Cnt=%d\n",Lidar_Data.Lidar_Data_Cnt);
-            //	memset(&Lidar_Data,0,sizeof(Lidar_Data));
-            Lidar_Circle_Cnt = 0;
-        }
-    }
-    if (Lidar_Ok_Flag)
-    {
-        for (i = 0; i < Lidar_Data.Lidar_Data_Cnt; i++)
-        {
-            r = Lidar_Data.Lidar_Data_Pix[i];
-            if ((i > 0) && (i < Lidar_Data.Lidar_Data_Cnt - 1) && (abs(Lidar_Data.Lidar_Data_Pix[i] - Lidar_Data.Lidar_Data_Pix[i - 1]) < 2 || abs(Lidar_Data.Lidar_Data_Pix[i + 1] - Lidar_Data.Lidar_Data_Pix[i]) < 2))
-            {
-                if (Lidar_Data.Lidar_Data_Pix[i] > 40)
-                {
-                    TrueCurLidarDistPix[TrueAimCount] = Lidar_Data.Lidar_Data_Pix[i];
-                    TrueCurLidarAng[TrueAimCount] = Lidar_Data.Lidar_Data_Ang[i];
-                    TrueAimCount++;
-                }
-            }
-
-            if ((i > 0) && (Lidar_Data.Lidar_Data_Dis[i] != 258) && (i < Lidar_Data.Lidar_Data_Cnt - 1) && (abs(Lidar_Data.Lidar_Data_Dis[i] - Lidar_Data.Lidar_Data_Dis[i - 1]) < 50 || abs(Lidar_Data.Lidar_Data_Dis[i + 1] - Lidar_Data.Lidar_Data_Dis[i]) < 50))
-            {
-                if (Lidar_Data.Lidar_Data_Dis[i] > 250)
-                {
-                    TrueCurLidarDistance[TrueAimCntDis] = Lidar_Data.Lidar_Data_Dis[i];
-                    TrueCurLidarAngle[TrueAimCntDis] = Lidar_Data.Lidar_Data_Ang[i];
-                    TrueAimCntDis++;
-                }
-            }
-        }
-        //	printf("TrueAimCntDis=%d,TrueAimCount=%d\n",TrueAimCntDis,TrueAimCount);
-        //	printf("\n");
-
-        //--------------------婊ゆ尝鍚庣殑lidar闅滅鐗╂樉绀�-----------------------------------
-
-        //-----闆疯揪鍧愭爣杞崲鍒板浘鍍忓潗鏍�-------
-        for (i = 0; i < TrueAimCount; i++)
-        {
-            TrueCurLidarAng[i] = (3600 + 900 - TrueCurLidarAng[i]) % 3600;
-        }
-
-        for (i = 0; i < TrueAimCntDis; i++)
-        {
-            TrueCurLidarAngle[i] = (3600 + 900 - TrueCurLidarAngle[i]) % 3600;
-        }
-
-        //--------------鍐掓场娉曟帓搴�------------------------------------------
-        //----------灏嗘壂鎻忓埌鐨勯殰纰嶇墿杞寲鍒版満鍣ㄤ汉鏄剧ず鍧愭爣涓�--
-        //----------鎸夌収瑙掑害閫掑鎺掑簭(鏈哄櫒浜哄ご鏈濆悜90搴�)------------
-        int tmpangle = 0;
-        int tmppix = 0;
-        int tmpdis = 0;
-        for (i = 0; i < TrueAimCount - 1; i++)
-        {
-            for (j = (i + 1); j < TrueAimCount; j++)
-            {
-                if (TrueCurLidarAng[i] >= TrueCurLidarAng[j])
-                {
-                    tmpangle = TrueCurLidarAng[i];
-                    TrueCurLidarAng[i] = TrueCurLidarAng[j];
-                    TrueCurLidarAng[j] = tmpangle;
-
-                    tmppix = TrueCurLidarDistPix[i];
-                    TrueCurLidarDistPix[i] = TrueCurLidarDistPix[j];
-                    TrueCurLidarDistPix[j] = tmppix;
-                }
-            }
-        }
-
-        for (i = 0; i < TrueAimCntDis - 1; i++)
-        {
-            for (j = (i + 1); j < TrueAimCntDis; j++)
-            {
-                if (TrueCurLidarAngle[i] >= TrueCurLidarAngle[j])
-                {
-                    tmpangle = TrueCurLidarAngle[i];
-                    TrueCurLidarAngle[i] = TrueCurLidarAngle[j];
-                    TrueCurLidarAngle[j] = tmpangle;
-
-                    tmpdis = TrueCurLidarDistance[i];
-                    TrueCurLidarDistance[i] = TrueCurLidarDistance[j];
-                    TrueCurLidarDistance[j] = tmpdis;
-                }
-            }
-        }
-
-        //-------灏嗛噰闆嗗埌鐨勯殰纰嶇墿鏁版嵁婊ゆ尝锛屽幓闄ら噸澶嶆暟鎹�----
-
-        for (i = 0; i < TrueAimCount - 1; i++)
-        {
-            if (abs(TrueCurLidarAng[i] - TrueCurLidarAng[i + 1]) < 1)
-            {
-                FilterLidarAng[FilterCount] = TrueCurLidarAng[i];
-                FilterLidarDistPix[FilterCount] = TrueCurLidarDistPix[i];
-                FilterCount++;
-            }
-        }
-
-        for (j = 0; j < TrueAimCntDis - 1; j++)
-        {
-            if (TrueCurLidarAngle[j] != TrueCurLidarAngle[j + 1])
-            {
-                FilterLidarAng2[FilterCount2] = TrueCurLidarAngle[j];
-                FilterLidarDistance[FilterCount2] = TrueCurLidarDistance[j];
-                FilterCount2++;
-            }
-        }
-        //printf("TrueAimCount=%d,TrueAimCntDis=%d\n",TrueAimCount,TrueAimCntDis);
-        //printf("FilterCount=%d,FilterCount2=%d\n",FilterCount,FilterCount2);
-        //printf("\n");
-
-        //----鎻愬彇璺濈鏈哄櫒浜烘渶杩戠殑闅滅鐗╄窛绂诲拰瑙掑害----------
-
-        if (!tmpminangle_f)
-        {
-            tmpminangle_f = FilterLidarAng2[0];
-        }
-        else
-        {
-            tmpminangle_f = min(tmpminangle_f, FilterLidarAng2[0]);
-        }
-
-        if (!tmpmaxangle_f)
-        {
-            tmpmaxangle_f = FilterLidarAng2[0];
-        }
-        else
-        {
-            tmpminangle_f = max(tmpminangle_f, FilterLidarAng2[0]);
-        }
-        tmpmindistance = FilterLidarDistance[0];
-        tmpmaxdistance = FilterLidarDistance[0];
-
-        for (i = 0; i < FilterCount2; i++)
-        {
-            tmpmindistance = min(tmpmindistance, FilterLidarDistance[i]);
-            tmpmaxdistance = max(tmpmaxdistance, FilterLidarDistance[i]);
-
-            tmpminangle_f = min(tmpminangle_f, FilterLidarAng2[i]);
-            tmpmaxangle_f = max(tmpmaxangle_f, FilterLidarAng2[i]);
-        }
-
-        //	printf("tmpminangle=%d\n",tmpminangle_f);
-        //	printf("tmpmaxangle=%d\n",tmpmaxangle_f);
-
-        //	printf("Lidar_Circle_Cnt=%d\n",Lidar_Circle_Cnt);
-        //	printf("tmpminpix=%d\n",tmpminpix);
-        //	printf("tmpmaxpix=%d\n",tmpmaxpix);
-        //	printf("\n");
-
-        //----------鏄剧ず鎸夊浘鍍忓潗鏍囨帓搴忓悗鐨勯殰纰嶇墿-----------------
-
-        for (i = 0; i < FilterCount; i++)
-        {
-            r = FilterLidarDistPix[i];
-
-            for (d = 0; d < 4; d++)
-            {
-                if (FilterLidarAng[i] < 900)
-                {
-                    y = r * sin(FilterLidarAng[i] * 3.14 / 1800) + 1 + 5 * cos(FilterLidarAng[i] * 3.14 / 1800) + d;
-                    x = r * cos(FilterLidarAng[i] * 3.14 / 1800) - 5;
-                }
-                if (FilterLidarAng[i] > 900)
-                {
-                    y = r * sin(FilterLidarAng[i] * 3.14 / 1800) + 1 + d;
-                    x = r * cos(FilterLidarAng[i] * 3.14 / 1800) + 5 * sin(FilterLidarAng[i] * 3.14 / 1800);
-                }
-
-                addr[cell(x, y, 0)] = 0;
-                addr[cell(x, y, 1)] = 255;
-                addr[cell(x, y, 2)] = 0;
-            }
-        }
-
-        //------------------------------------------------------------------------
-
-        //-------鍒ゆ柇鏈哄櫒浜哄埌鎬荤洰鏍囩殑鐩寸嚎璺緞涓婃湁鏃犻殰纰嶇墿---
-
-        //*********************************************************************//
-        //--------------鏀硅繘鐨凴RT绠楁硶瀹炵幇鍔犲叆婊氬姩绐楀彛----------//
-        //*********************************************************************//
-
-        if (!isArrivedDirect_Flag)
-        {
-            if (FilterCount2)
-                HaveNoObs = 0;
-            if (!FilterCount2)
-                HaveNoObs = 1;
-        }
-        //printf("HaveNoObs=%d\n",HaveNoObs);
-
-        //---鐩存帴璺戝悜鐩爣鐨勬潯浠�:
-        //----1.绐楀彛鍖哄煙鍐呮棤闅滅鐗�2.绐楀彛鍐呮湁闅滅锛�
-        //--------涓旈殰纰嶇墿鍒嗗竷涓嶅湪鏈哄櫒浜轰笌鐩爣杩炵嚎鐨勫畨鍏ㄩ€氶亾鍐�---
-        if (HaveNoObs && (!isArrivedDirect_Flag))
-        {
-            SrandNum[0] = robot_temp[1].angle;
-            printf("SrandNum[0]=%d\n", SrandNum[0]);
-            printf("No Obs Path00000000000000000000000000000000000000000000000\n");
-
-            double_control_points[0].x = 0;
-            double_control_points[0].y = 0;
-
-            double_control_points[1].x = 0;
-            double_control_points[1].y = ROLLWINDOW_R * sin(SrandNum[0] * 3.14 / 1800) / 2;
-
-            double_control_points[2].x = ROLLWINDOW_R * cos(SrandNum[0] * 3.14 / 1800) / 2;
-            double_control_points[2].y = ROLLWINDOW_R * sin(SrandNum[0] * 3.14 / 1800) / 2;
-
-            double_control_points[3].x = ROLLWINDOW_R * cos(SrandNum[0] * 3.14 / 1800);
-            double_control_points[3].y = ROLLWINDOW_R * sin(SrandNum[0] * 3.14 / 1800);
-
-            ComputeDoubleBezier(double_control_points, TrackNodeNum, double_control_r);
-            Track_Flag = 1;
-            for (i = 0; i < 4; i++)
-            {
-                printf("x=%d,y=%d\n", double_control_points[i].x, double_control_points[i].y);
-            }
-            printf("\n");
-        }
-
-        for (i = 0; i < ROLLWINDOW_PIX; i++)
-        {
-            y = i * sin((SrandNum[0] + get_tht) * 3.14 / 1800);
-            x = i * cos((SrandNum[0] + get_tht) * 3.14 / 1800);
-            addr[cell(x, y, 0)] = 0;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-        }
-
-        //--HaveNoObs=1琛ㄧず鏃犻殰纰�----
-
-        int tmp_pow = 0;
-        int tmp_dis = 0;
-
-        if (FilterCount && FilterCount2 && (!isArrivedDirect_Flag) && !HaveNoObs)
-        {
-            //Reach_Path.Reach_Cnt=0;
-            if (isOkPath == 10)
-            {
-                calibrate_cnt = 0;
-                for (i = 0; i < 5; i++)
-                {
-                    fd_rand = open("/dev/urandom", O_RDONLY); //  /dev/urandom璁惧鍙疄鐜伴殢鏈烘暟浜х敓
-
-                    read(fd_rand, SrandNum + i, sizeof(int));    //浜岀淮鏁扮粍a[i]琛ㄧず 绗琲琛岄鍦板潃
-                    SrandNum[i] = abs(SrandNum[i]) % 1600 + 100; //10-170搴︽悳绱�
-
-                    RandRito = RandRito * 2;
-                    isOkPath = 1;
-                    close(fd_rand);
-                }
-            }
-
-            //--- 鐢ㄤ簬涓や晶闅滅鐗╁瓨鍦ㄦ椂閫夊彇閫氶亾-------
-            for (i = 0; i < FilterCount2 - 1; i++)
-            {
-                tmp_pow = pow((FilterLidarDistance[i] * FilterLidarDistance[i] + FilterLidarDistance[i + 1] * FilterLidarDistance[i + 1] - 2 * FilterLidarDistance[i] * FilterLidarDistance[i + 1] * cos((FilterLidarAng2[i] - FilterLidarAng2[i + 1]) * 3.14 / 1800)), 0.5);
-
-                //------瀛樺湪涓や晶闅滅鐗╀箣闂寸殑闂撮殧瀹硅鏈哄櫒浜洪€氳繃---------
-                if ((abs(FilterLidarAng2[i] - FilterLidarAng2[i + 1]) > 200) && tmp_pow > 400)
-                {
-                    Reach_Path.Reach_Angle[Reach_Path.Reach_Cnt] = FilterLidarAng2[i];
-                    Reach_Path.Reach_Distance[Reach_Path.Reach_Cnt] = FilterLidarDistance[i];
-                    Reach_Path.Reach_Cnt++;
-
-                    Reach_Path.Reach_Angle[Reach_Path.Reach_Cnt] = FilterLidarAng2[i + 1];
-                    Reach_Path.Reach_Distance[Reach_Path.Reach_Cnt] = FilterLidarDistance[i + 1];
-                    Reach_Path.Reach_Cnt++;
-                    //	printf("have double OBS   reachable path========================\n");
-                    //	printf("tmp_pow=%d\n",tmp_pow);
-                    //	printf("FilterLidarAng2[%d]=%d,FilterLidarAng2[%d]=%d,FilterLidarDistance[%d]=%d,FilterLidarDistance[%d]=%d\n",i,FilterLidarAng2[i],i+1,FilterLidarAng2[i+1],i,FilterLidarDistance[i],i+1,FilterLidarDistance[i+1]);
-                }
-            }
-
-            //--鍒ゆ柇鏈€灏忚搴﹁缃垵濮嬪€�------
-            //------璁板綍瑙掑害鍙栨渶鍊兼椂鍊欏搴旂殑闅滅鐗╄窛绂�----
-
-            if (!tmp_minangle)
-            {
-                tmp_minangle = FilterLidarAng2[0];
-                tmp_minangle_dis = FilterLidarDistance[0];
-            }
-            else
-            {
-                tmp_minangle = min(tmp_minangle, FilterLidarAng2[0]);
-                tmp_minangle_dis = min(tmp_minangle_dis, FilterLidarDistance[0]);
-            }
-
-            if (!tmp_mindis)
-            {
-                tmp_mindis = FilterLidarDistance[0];
-            }
-            else
-            {
-                tmp_mindis = min(tmp_mindis, FilterLidarDistance[0]);
-            }
-
-            int tmp_anglesub[100] = {0};
-            int tmp_distancesub[100] = {0};
-            int tmp_anglesub_cnt = 0;
-            for (i = 0; i < FilterCount2 - 1; i++)
-            {
-                if (abs(FilterLidarAng2[i] - FilterLidarAng2[i + 1]) > 200)
-                {
-                    tmp_anglesub[tmp_anglesub_cnt] = FilterLidarAng2[i];
-                    tmp_distancesub[tmp_anglesub_cnt] = FilterLidarDistance[i];
-                    tmp_anglesub_cnt++;
-
-                    tmp_anglesub[tmp_anglesub_cnt] = FilterLidarAng2[i + 1];
-                    tmp_distancesub[tmp_anglesub_cnt] = FilterLidarDistance[i + 1];
-                    tmp_anglesub_cnt++;
-                }
-            }
-
-            for (i = 0; i < FilterCount2 - 1; i++)
-            {
-                tmp_maxrad = max(tmp_maxrad, abs(FilterLidarAng2[i] - FilterLidarAng2[i + 1]));
-            }
-            for (i = 0; i < FilterCount2; i++)
-            {
-                tmp_maxangle = max(tmp_maxangle, FilterLidarAng2[i]);
-                tmp_minangle = min(tmp_minangle, FilterLidarAng2[i]);
-
-                tmp_mindis = min(tmp_mindis, FilterLidarDistance[i]);
-            }
-            //----鑾峰彇鏈€鍊艰搴﹀搴旂殑璺濈-----
-            for (i = 0; i < FilterCount2; i++)
-            {
-                if (tmp_minangle == FilterLidarAng2[i])
-                {
-                    tmp_minangle_dis = FilterLidarDistance[i];
-                }
-                if (tmp_maxangle == FilterLidarAng2[i])
-                {
-                    tmp_maxangle_dis = FilterLidarDistance[i];
-                }
-            }
-            //	printf("tmpminangle=%d,tmpmaxangle=%d\n",tmp_minangle,tmp_maxangle);
-            //	printf("tmp_maxrad=%d\n",tmp_maxrad);
-            //	printf("tmp_mindis=%d\n",tmp_mindis);
-            //	printf("tmp_minangle_dis=%d\n",tmp_minangle_dis);
-            //	printf("tmp_maxangle_dis=%d\n",tmp_maxangle_dis);
-            //	printf("\n");
-
-            //-----鍗曚晶闅滅鐗╁垎涓洪殰纰嶇墿瑕嗙洊--------
-            //---瑙嗚澶т簬150掳鍜屽皬浜�150掳鐨勬儏鍐�----
-            if (tmp_maxrad < 200)
-            {
-                HaveDoubleObsPath = 2; //=2琛ㄧず鍗曚晶闅滅
-                SigleObs_MaxAngle = tmp_maxangle;
-                SigleObs_MinAngle = tmp_minangle;
-                SigleObs_MinDis = tmp_mindis;
-                SigleObs_MinAngle_Dis = tmp_minangle_dis;
-                SigleObs_MaxAngle_Dis = tmp_maxangle_dis;
-
-                if (2 == HaveDoubleObsPath)
-                {
-                    if (tmp_maxangle - tmp_minangle > 1500) //琛ㄧず杩炵画鍗曚晶闅滅瑙嗚瑕嗙洊杩囧ぇ
-                    {
-                        HaveDoubleObsPath = 3; //鐗规畩鐜
-                    }
-                }
-            }
-            else
-            {
-                HaveDoubleObsPath = 1; //=1琛ㄧず鏈変袱渚ч殰纰�
-                SigleObs_MaxAngle = 0;
-                SigleObs_MinAngle = 0;
-                SigleObs_MinDis = 0;
-                SigleObs_MinAngle_Dis = 0;
-                SigleObs_MaxAngle_Dis = 0;
-            }
-
-            tmp_maxangle = 0;
-            tmp_minangle = FilterLidarAng2[0];
-            tmp_mindis = 0;
-            tmp_minangle_dis = FilterLidarDistance[0];
-            tmp_maxangle_dis = 0;
-
-            //	printf("SigleObs_MaxAngle=%d\n",SigleObs_MaxAngle);
-            //	printf("SigleObs_MinAngle=%d\n",SigleObs_MinAngle);
-            //	printf("\n");
-
-            //----鍒ゆ柇绛涢€夊嚭鏉ョ殑鏃犻殰纰嶅尯闂存槸鍚﹀悎鐞�--------------//
-            /*	if(Reach_Path.Reach_Cnt)
-		{			
-			for(i=0;i<Reach_Path.Reach_Cnt-1;i=i+2)
-			{
-				for(j=0;j<FilterCount2;j++)
-				{
-					if(abs(FilterLidarAng2[j]-(Reach_Path.Reach_Angle[i]+Reach_Path.Reach_Angle[i+1])/2)<100)
-					{
-						Reach_Path.Reach_Angle[i]=0;
-						Reach_Path.Reach_Angle[i+1]=0;					
-					}
-				}
-			}
-		}
-		//----鍒ゆ柇婊′竴瀹氬湀鏁帮紝鍑忓皬璇樊-------
-		if(Reach_Path.Reach_Cnt )
-		{
-			for(i=0;i<Reach_Path.Reach_Cnt-1;i=i+2)
-			{
-				if(Reach_Path.Reach_Angle[i])
-				{
-					ReachFilter_Path.ReachFilter_Angle[ReachFilter_Path.ReachFilter_Cnt]=Reach_Path.Reach_Angle[i];
-					ReachFilter_Path.ReachFilter_Cnt++;
-					ReachFilter_Path.ReachFilter_Angle[ReachFilter_Path.ReachFilter_Cnt]=Reach_Path.Reach_Angle[i+1];					
-					ReachFilter_Path.ReachFilter_Cnt++;
-				//	printf("Lidar_Circle_Cnt=%d\n",Lidar_Circle_Cnt);
-				//	printf("Reach_Angle[%d]=%d,Reach_Angle[%d]=%d\n",i,Reach_Path.Reach_Angle[i],i+1,Reach_Path.Reach_Angle[i+1]);					
-				}
-			}
-
-			//Lidar_Circle_Cnt=0;
-			//memset(Tmp_Cilcle_Cnt,0,sizeof(Tmp_Cilcle_Cnt));
-			Reach_Path.Reach_Cnt=0;
-		}
-		int tmp_filter1=0;
-		int tmp_filter2=0;
-		if(ReachFilter_Path.ReachFilter_Cnt)
-		{
-			for(i=0;i<ReachFilter_Path.ReachFilter_Cnt-1;i=i+2)
-			{
-				tmp_filter1+=ReachFilter_Path.ReachFilter_Angle[i];
-				tmp_filter2+=ReachFilter_Path.ReachFilter_Angle[i+1];
-			}
-			tmp_filter1=tmp_filter1/(ReachFilter_Path.ReachFilter_Cnt/2);
-			tmp_filter2=tmp_filter2/(ReachFilter_Path.ReachFilter_Cnt/2);
-			printf("tmp_filter1=%d,tmp_filter2=%d\n",tmp_filter1,tmp_filter2);
-			SrandNum[0]=(tmp_filter1+tmp_filter2)/2;
-		
-			printf("SrandNum=%d\n",SrandNum[0]);
-			printf("have double OBS   reachable path========================\n");
-
-			//-----鎺掑簭-------
-			int tmp1_s=0;
-			for(i=0;i<FilterCount2-1;i++)
-			{
-				for(j=i+1;j<FilterCount2;j++)
-				{
-					if(abs(FilterLidarAng2[i]-SrandNum[0])>abs(FilterLidarAng2[j]-SrandNum[0]))
-					{
-						tmp1_s=FilterLidarAng2[i];
-						FilterLidarAng2[i]=FilterLidarAng2[j];
-						FilterLidarAng2[j]=tmp1_s;
-					}
-				}				
-			}			
-			if(abs(FilterLidarAng2[0]-SrandNum[0])>200)
-			{
-				isOkPath=1;
-				HaveDoubleObsPath=1;
-			//	isArrivedDirect_Flag=1;
-			//	printf("FilterLidarAng2[0]-SrandNum[0]=%d\n",abs(FilterLidarAng2[0]-SrandNum[0]));
-			}
-			
-			ReachFilter_Path.ReachFilter_Cnt=0;
-			
-		}
-*/
-            if (1 == HaveDoubleObsPath)
-            {
-                int tmp_left_ang = 0;
-                int tmp_right_ang = 0;
-                int tmp_left_dis = 0;
-                int tmp_right_dis = 0;
-                printf("have double OBS   reachable path========================\n");
-                printf("tmp_maxrad=%d\n", tmp_maxrad);
-                //----------鎵惧嚭鏈€澶у彲琛屽叆鍙�----------
-                for (i = 0; i < FilterCount2 - 1; i++)
-                {
-                    if (tmp_maxrad == abs(FilterLidarAng2[i + 1] - FilterLidarAng2[i]))
-                    {
-                        tmp_left_ang = FilterLidarAng2[i];
-                        tmp_left_dis = FilterLidarDistance[i];
-                        tmp_right_ang = FilterLidarAng2[i + 1];
-                        tmp_right_dis = FilterLidarDistance[i + 1];
-                    }
-                }
-
-                if (abs(tmp_left_ang - robot_temp[1].angle) < abs(tmp_right_ang - robot_temp[1].angle))
-                {
-                    SrandNum[0] = tmp_left_ang + asin(200 / (float)tmp_left_dis) * 1800 / 3.14;
-                }
-                else
-                {
-                    SrandNum[0] = tmp_right_ang - asin(200 / (float)tmp_right_dis) * 1800 / 3.14;
-                }
-                printf("tmp_left_ang=%d,tmp_right_ang=%d\n", tmp_left_ang, tmp_right_ang);
-                printf("tmp_left_dis=%d,tmp_right_dis=%d\n", tmp_left_dis, tmp_right_dis);
-                printf("SrandNum[0]=%d\n", SrandNum[0]);
-            }
-
-            //---濡傛灉鍙湁鍗曚晶闅滅鐗╀笖瑙嗛噹瑕嗙洊灏忥紝鐩爣瀵煎悜鎬ч€夊彇-------
-            if (2 == HaveDoubleObsPath)
-            {
-                //-----淇濊瘉鐩爣鍦ㄦ満鍣ㄤ汉鍓嶆柟--鍗�0-180掳----------
-                //---鍒ゆ柇瑙掑害鐨勭洰鐨勬槸涓轰簡鍒ゆ柇璺濈锛屾墍浠�---
-                //-------闇€瑕佽浆鎹负璺濈----淇敼--------------------
-                int a = 0, b = 0;
-                if (SigleObs_MinDis > 250)
-                {
-                    if (abs(SigleObs_MaxAngle - robot_temp[1].angle) > abs(SigleObs_MinAngle - robot_temp[1].angle))
-                    {
-                        SrandNum[0] = SigleObs_MinAngle - asin(200 / (float)SigleObs_MinAngle_Dis) * 1800 / 3.14;
-                        if (SrandNum[0] < 0)
-                            SrandNum[0] = 0;
-                        a = asin(200 / (float)SigleObs_MinAngle_Dis) * 1800 / 3.14;
-                    }
-                    else
-                    {
-                        SrandNum[0] = SigleObs_MaxAngle + asin(200 / (float)SigleObs_MaxAngle_Dis) * 1800 / 3.14;
-                        if (SrandNum[0] > 1800)
-                            SrandNum[0] = 1800;
-                        b = asin(200 / (float)SigleObs_MaxAngle_Dis) * 1800 / 3.14;
-                        double_control_points[0].x = 0;
-                        double_control_points[0].y = 0;
-
-                        double_control_points[1].x = 0;
-                        double_control_points[1].y = ROLLWINDOW_R * sin(SrandNum[0] * 3.14 / 1800) / 2;
-
-                        double_control_points[2].x = ROLLWINDOW_R * cos(SrandNum[0] * 3.14 / 1800);
-                        double_control_points[2].y = ROLLWINDOW_R * sin(SrandNum[0] * 3.14 / 1800) / 2;
-
-                        double_control_points[3].x = ROLLWINDOW_R * cos(SrandNum[0] * 3.14 / 1800);
-                        double_control_points[3].y = ROLLWINDOW_R * sin(SrandNum[0] * 3.14 / 1800);
-
-                        ComputeDoubleBezier(double_control_points, TrackNodeNum, double_control_r);
-                        //Track_Flag=1;
-                    }
-
-                    printf("a=%d,b=%d\n", a, b);
-                    printf("SigleObs_MaxAngle_Dis=%d\n", SigleObs_MaxAngle_Dis);
-                    printf("SigleObs_MinAngle_Dis=%d\n", SigleObs_MinAngle_Dis);
-                    printf("SigleObs_MaxAngle=%d\n", SigleObs_MaxAngle);
-                    printf("SigleObs_MinAngle=%d\n", SigleObs_MinAngle);
-                    printf("have single obs   reachable path-----------------------------\n");
-                    printf("SrandNum[0]=%d\n", SrandNum[0]);
-                    for (i = 0; i < 4; i++)
-                    {
-                        printf("x=%d,y=%d\n", double_control_points[i].x, double_control_points[i].y);
-                    }
-                    printf("\n");
-                }
-            }
-
-            //---鍗曚晶闅滅鐗╀笖瑙嗛噹瑕嗙洊澶�-----------------------------
-            if (3 == HaveDoubleObsPath)
-            {
-                if (abs(tmpminangle_f - 0) >= abs(1800 - tmpmaxangle_f))
-                    SrandNum[0] = 10;
-                else
-                    SrandNum[0] = 1800;
-                printf("tmpminangle_f=%d,tmpmaxangle_f=%d\n", tmpminangle_f, tmpmaxangle_f);
-                printf("te shu huan jing!+++++++++++++++++++++++++++++++++++\n");
-            }
-        }
-
-        //---鏈哄櫒浜鸿兘澶熻繍琛岀殑鍓嶆彁鏄湁鍓嶈繘鏂瑰悜---------------
-        //--涓旀柟鍚戞槸鐢辩獥鍙ｅ唴鏃犻殰纰嶇墿鎴栬€呮湁涓€渚ч殰纰嶇墿----
-        //-----鎴栬€呬袱渚ч殰纰嶇墿鎵€閫夊嚭鏉ョ殑璺緞--------------------
-        if (SrandNum[0] && (HaveDoubleObsPath || HaveNoObs))
-        {
-            isArrivedDirect_Flag = 1;
-            HaveDoubleObsPath = 0;
-        }
-
-        tmp_maxrad = 0;
-        tmpminangle_f = 0;
-        tmpmaxangle_f = 0;
-        memset(&Lidar_Data, 0, sizeof(Lidar_Data));
-        Lidar_Ok_Flag = 0;
-    }
-
-    if (Lidar_Circle_Cnt > 0)
-    {
-        AimCount = 0;
-        memset(CurLidarAng, 0, sizeof(CurLidarAng));
-        memset(CurLidarDistPix, 0, sizeof(CurLidarDistPix));
-
-        TrueAimCount = 0;
-        memset(TrueCurLidarDistPix, 0, sizeof(TrueCurLidarDistPix));
-        memset(TrueCurLidarAng, 0, sizeof(TrueCurLidarAng));
-
-        TrueAimCntDis = 0;
-        memset(TrueCurLidarDistance, 0, sizeof(TrueCurLidarDistance));
-        memset(TrueCurLidarAngle, 0, sizeof(TrueCurLidarAngle));
-
-        FilterCount = 0;
-        memset(FilterLidarDistPix, 0, sizeof(FilterLidarDistPix));
-        memset(FilterLidarAng, 0, sizeof(FilterLidarAng));
-        FilterCount2 = 0;
-        memset(FilterLidarDistance, 0, sizeof(FilterLidarDistance));
-        memset(FilterLidarAng2, 0, sizeof(FilterLidarAng2));
-    }
-
-    //printf("isArrivedDirect_Flag=%d\n",isArrivedDirect_Flag);
-
-    //--------------------RRT浜х敓涓€涓殢鏈鸿矾寰�----------------------
-
-    //--------鏄剧ず鍙璺緞鐨勮竟鐣�---------------------------------
-
-    //----------闆疯揪鎵埌鐨勮繎浼艰竟鐣岀偣-------------------------------
-
-    //-------------------------------------------------------------------------
-
-    LidarEdgeCnt = 0;
-    memset(LidarEdgeDistPix, 0, 1024);
-    memset(LidarEdgeDistance, 0, 1024);
-    memset(LidarEdgeAngle, 0, 1024);
-
-    LidarOkPathMidCnt = 0;
-    memset(LidarOkPathMidAng, 0, 10);
-    memset(LidarOkPathMidPix, 0, 10);
-
-    //---------------------------------------------------------------------------
-
-    /*angle=0.01745*30;//0.5235
-	for(r=0;r<275;r++)
-	{
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=255;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-	}
-
-	angle=0.01745*4+1.5708;//0.0698
-	for(r=0;r<275;r++)
-	{
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=255;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-	}
-	*/
-    //------------------------------------------------------------------------
-
-    //------------------------灞忓箷涓婄敾鍦�-----------------------------------
-    //-----鐢荤獥鍙�-------//
-
-    tmp_rollwindow_r = ROLLWINDOW_R / ROLLWINDOW_RITO + 130;
-    if ((tmp_rollwindow_r > 150) && (tmp_rollwindow_r < (618 + 300)))
-    {
-        ROLLWINDOW_PIX = 17.6132 * pow(0.0099 * ((tmp_rollwindow_r - 430)), 0.8712) + 41;
-        //printf("di 1 ge...\n");
-    }
-    if ((tmp_rollwindow_r > (618 + 300)) && (tmp_rollwindow_r < (995 + 300)))
-    {
-        ROLLWINDOW_PIX = 9.9210 * pow(0.0918 * ((tmp_rollwindow_r - 430)), 0.5322) + 41;
-        //printf("di 2 ge...\n");
-    }
-    if ((tmp_rollwindow_r > (995 + 300)) && (tmp_rollwindow_r < (2019 + 300)))
-    {
-        ROLLWINDOW_PIX = 2.7994 * pow(2.4136 * ((tmp_rollwindow_r - 430)), 0.4712) + 41;
-        //printf("di 3 ge...\n");
-    }
-    if (tmp_rollwindow_r > (2019 + 300))
-    {
-        ROLLWINDOW_PIX = 4.0607 * pow(4.0504 * ((tmp_rollwindow_r - 430)), 0.4028) + 41;
-        //printf("di 4 ge...\n");
-    }
-    //printf("tmp_rollwindow_r=%6.2f,ROLLWINDOW_PIX=%d\n",tmp_rollwindow_r,ROLLWINDOW_PIX);
-
-    for (angle = 0; angle < 6.283; angle = angle + 0.02)
-    {
-        r = ROLLWINDOW_PIX;
-        y = r * sin(angle);
-        x = r * cos(angle);
-        addr[cell(x, y, 0)] = 0;
-        addr[cell(x, y, 1)] = 255;
-        addr[cell(x, y, 2)] = 0;
-    }
-
-    /*for(angle=0;angle<6.283;angle=angle+0.1)
-	{  
-		r=20;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=255;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-		r=40;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=0;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=0;
-	}
-	
-	for(angle=0;angle<6.283;angle=angle+0.01)
-	{
-		r=100;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=0;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-
-		r=125;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=255;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-		r=150;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=0;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-		r=175;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=255;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-		r=200;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=0;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-		r=225;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=255;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-		r=250;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=0;
-		addr[cell(x,y,1)]=255;
-		addr[cell(x,y,2)]=255;
-
-
-		r=275;
-		y=r*sin(angle);
-		x=r*cos(angle);
-		addr[cell(x,y,0)]=0;	//b
-		addr[cell(x,y,1)]=255;	//g
-		addr[cell(x,y,2)]=0;	//r
-				
-	}
-	*/
-    //---------------------------------------------------------------------
-
-    //-------------鐢荤洰鏍囩墿----------------------------------------
-
-    for (d = 0; d < 2; d++)
-
-        for (angle = 0; angle < 6.283; angle = angle + 0.05)
-        {
-            r = get_r(robot_temp[1].count) + d;
-            y = r * sin(angle) + robot_temp[1].rad * sin((float)(robot_temp[1].angle / 572.95));
-            x = r * cos(angle) + robot_temp[1].rad * cos((float)(robot_temp[1].angle / 572.95));
-            addr[cell(x, y, 0)] = d * 100;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-
-            //--------------------------------------
-            r = get_r(robot_temp[2].count) + d;
-            y = r * sin(angle) + robot_temp[2].rad * sin((float)(robot_temp[2].angle / 572.95));
-            x = r * cos(angle) + robot_temp[2].rad * cos((float)(robot_temp[2].angle / 572.95));
-            addr[cell(x, y, 0)] = d * 100;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-
-            //--------------------------------------
-
-            r = get_r(robot_temp[3].count) + d;
-            y = r * sin(angle) + robot_temp[3].rad * sin((float)(robot_temp[3].angle / 572.95));
-            x = r * cos(angle) + robot_temp[3].rad * cos((float)(robot_temp[3].angle / 572.95));
-            addr[cell(x, y, 0)] = d * 100;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-
-            //--------------------------------------
-
-            r = get_r(robot_temp[4].count) + d;
-            y = r * sin(angle) + robot_temp[4].rad * sin((float)(robot_temp[4].angle / 572.95));
-            x = r * cos(angle) + robot_temp[4].rad * cos((float)(robot_temp[4].angle / 572.95));
-            addr[cell(x, y, 0)] = d * 100;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-
-            //--------------------------------------
-
-            r = get_r(robot_temp[5].count) + d;
-            y = r * sin(angle) + robot_temp[5].rad * sin((float)(robot_temp[5].angle / 572.95));
-            x = r * cos(angle) + robot_temp[5].rad * cos((float)(robot_temp[5].angle / 572.95));
-            addr[cell(x, y, 0)] = d * 100;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-
-            r = get_r(robot_temp[6].count) + d;
-            y = r * sin(angle) + robot_temp[6].rad * sin((float)(robot_temp[6].angle / 572.95));
-            x = r * cos(angle) + robot_temp[6].rad * cos((float)(robot_temp[6].angle / 572.95));
-            addr[cell(x, y, 0)] = d * 100;
-            addr[cell(x, y, 1)] = 0;
-            addr[cell(x, y, 2)] = 255;
-        }
-
-    //-----------------妯℃嫙闆疯揪鎵弿鐢婚潰---------------------------------------
-    /*
-	static float scan=0;
-
-	for(angle=0;angle<=6.283+0.005;angle=angle+0.005)
-	{
-		for(r=0;r<275;r=r+1)
-		{
-			y=(r*sin(angle));
-			x=(r*cos(angle));
-			//----------闆疯揪鎵弿绾�-------------
-			if(abs(scan*100-angle*100)<3)
-			{
-				addr[cell(x,y,0)]=0;
-				addr[cell(x,y,1)]=0;
-				addr[cell(x,y,2)]=255;
-			}
-		}
-	}	 
-	scan=scan+0.4;
-
-	if(scan>=6.28)
-		scan=0;
-
-*/
-    //-------------------------------------------------------------------------
-}
-
-//=========================================================================
 
 void find_dir(unsigned char *addr)
 {
@@ -1226,9 +1725,9 @@ void find_dir(unsigned char *addr)
 
     int then_count = 0;
     int then_sum = 0;
-
     for (angle = 0.7; angle <= 2.44; angle = angle + 0.05)
     {
+
         y = (r * sin(angle));
         x = (r * cos(angle));
         // addr[cell(x,y,0)]=0;
@@ -1245,7 +1744,6 @@ void find_dir(unsigned char *addr)
     cir_line[0] = dot_count;
     dot_sum = dot_sum / cir_line[0];
     printf("all is %d avg is %d \n", cir_line[0], dot_sum);
-
     for (i = 1; i < dot_count; i++)
     {
         if ((dot_sum - cir_line[i]) > 10)
@@ -1256,17 +1754,16 @@ void find_dir(unsigned char *addr)
             then_sum += i;
         }
     }
-
     if (then_count >= 1)
         then_sum = then_sum / then_count;
 
     printf("tis then %d avg is %d \n", then_count, then_sum);
 }
 
-void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
+void scan(unsigned char *addr)
 {
     int i = 0;
-    //-----------------for寰幆浣撳彉閲�----------------
+    //-----------------for循环体变量----------------
     int y = 0;
     int x = 0;
 
@@ -1288,25 +1785,27 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
     int ii = 0;
     int jj = 0;
 
-    //--------------------瑙嗚鍧愭爣瀵圭О鏃嬭浆x->y 锛泍->x---------------
     for (ii = -299; ii <= 299; ii++)
     {
         for (jj = -399; jj <= -1; jj++)
         {
+            //互换 addr[4 * jj - 3200 * ii + 961600] 和 addr[-4 * jj - 3200 * ii + 961600] 的值
             tmp1 = addr[4 * jj - 3200 * ii + 961600];
             addr[4 * jj - 3200 * ii + 961600] = addr[-4 * jj - 3200 * ii + 961600];
             addr[-4 * jj - 3200 * ii + 961600] = tmp1;
 
+            //互换 addr[4 * jj - 3200 * ii + 961601] 和 addr[-4 * jj - 3200 * ii + 961601] 的值
             tmp2 = addr[4 * jj - 3200 * ii + 961601];
             addr[4 * jj - 3200 * ii + 961601] = addr[-4 * jj - 3200 * ii + 961601];
             addr[-4 * jj - 3200 * ii + 961601] = tmp2;
 
+            //互换 addr[4 * jj - 3200 * ii + 961602] 和 addr[-4 * jj - 3200 * ii + 961602] 的值
             tmp3 = addr[4 * jj - 3200 * ii + 961602];
             addr[4 * jj - 3200 * ii + 961602] = addr[-4 * jj - 3200 * ii + 961602];
             addr[-4 * jj - 3200 * ii + 961602] = tmp3;
         }
     }
-    //-------------------------------------------------------------------------
+    //---------------------------------------------
 
     for (angle = 0; angle <= 6.283 + 0.005; angle = angle + 0.005)
     {
@@ -1325,8 +1824,8 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
 
             //-----------------------------------------------------------------
 
-            if (4 == rgb(addr, (r * sin(angle)), (r * cos(angle)))) //濡傛灉妫€娴嬩紶鍏ョ殑鍍忕礌鏁版嵁鏄粍鑹�
-            {                                                       //rgb(unsigned char *addr,int y,int x)
+            if (4 == rgb(addr, (r * sin(angle)), (r * cos(angle)))) //rgb函数返回值是4，表示黄色
+            {
                 if (r >= 50)
                 {
                     r_value = 30;
@@ -1339,6 +1838,7 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
                 {
                     r_value = 20;
                 }
+
                 if (r >= 230)
                 {
                     r_value = 10;
@@ -1346,13 +1846,11 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
 
                 for (i = 1; i < r_value; i = i + 1)
                 {
-                    //閲囬泦鍒伴粍鑹插紑濮嬪欢浼稿鏋滆繕鏄粍鑹插氨缁х画鍒ゆ柇
                     if (((4 == rgb(addr, (r + i) * sin(angle), (r + i) * cos(angle))) || (4 == rgb(addr, (r + i + 1) * sin(angle), (r + i + 1) * cos(angle)))) && ((4 == rgb(addr, (r - i) * sin(angle), (r - i) * cos(angle))) || (4 == rgb(addr, (r - i - 1) * sin(angle), (r - i - 1) * cos(angle)))))
                     {
                         y_j++;
                         y_r = i;
                     }
-                    //绛夊埌涓婁笅涓洪粦鑹诧紝鍋滄
                     if (((5 == rgb(addr, (r + i) * sin(angle), (r + i) * cos(angle))) || (5 == rgb(addr, (r + i + 1) * sin(angle), (r + i + 1) * cos(angle)))) && ((5 == rgb(addr, (r - i) * sin(angle), (r - i) * cos(angle))) || (5 == rgb(addr, (r - i - 1) * sin(angle), (r - i - 1) * cos(angle)))))
                     {
                         b_j1++;
@@ -1363,6 +1861,7 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
 
                 if (y_j >= 0 && b_r1 > y_r && b_r1 - y_r <= 2)
                 {
+
                     rad_array[pixel_j] = r;
                     pixel_flag[pixel_j] = 1;
                     angle_array[pixel_j] = angle;
@@ -1373,25 +1872,27 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
                     pixel_j++;
                 }
             }
+
             //--------------------------------------------
         }
+
         //----------------------------------------------------
     }
 
     //-----------------------------------------------------------------------------
 
-    robot_temp[0].count = pixel_j; //瀛樺偍鎬荤洰鏍囨暟
+    robot_temp[0].count = pixel_j; //存储
     //---------------------------------------------------------------------
     int start_j = 0;
     int j = 0;
-    int pixel_rad[10] = {0};     // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
-    float pixel_angle[10] = {0}; // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
+    int pixel_rad[10] = {0};     // 用于存储各个组别的像素点
+    float pixel_angle[10] = {0}; // 用于存储各个组别的像素点
 
-    float pixel_angle_zero[10] = {0}; // 鐢ㄤ簬瀛樺偍闆剁偣闄勮繎鐨勭偣
+    float pixel_angle_zero[10] = {0}; // 用于存储零点附近的点
     int pixel_rad_zero[10] = {0};
     int pixel_array_zeroj[10] = {0};
 
-    int pixel_array_j[10] = {0}; // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣涓暟
+    int pixel_array_j[10] = {0}; // 用于存储各个组别的像素点个数
 
     int Dif_rad = 0;
     int Dif_angle = 0;
@@ -1405,7 +1906,7 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
         for (j = 0; j < 10; j++)
         {
             //-------------------------------------------------------------------------------
-            for (i = 0; i < pixel_j; i++) // 鎵惧嚭杩樻病鏈夊綊绫荤殑鍍忕礌鐐�
+            for (i = 0; i < pixel_j; i++) // 找出还没有归类的像素点
             {
                 if (pixel_flag[i] == 1)
                 {
@@ -1417,7 +1918,7 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
                 }
             }
 
-            //---------------------涓嶅悓鐨勫崐寰勫彇涓嶅悓鐨勯檺鍒跺€�---------------------------------------------
+            //------------------------------不同的半径取不同的限制值---------------------------------------------
             if (rad_array[start_j] < 100)
             {
                 Dif_rad = 25;
@@ -1462,9 +1963,9 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
             //----------------------------------------------------------------------------
 
             //----------------------------------------------------------------------------
-            for (i = 0; i < pixel_j; i++) // 杩涜姣忎釜鍛ㄦ湡鐨勯亶鍘�
+            for (i = 0; i < pixel_j; i++) // 进行每个周期的遍历
             {
-                //-------------------------澶勭悊闆剁偣鐗规畩鐐�------------------------------------
+                //-------------------------处理零点特殊点------------------------------------
                 if (angle_zero * 100 <= 2)
                 {
                     angle_zero = 6.283;
@@ -1493,7 +1994,7 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
                 if (pixel_flag[i] == 1 && abs(rad_array[start_j] - rad_array[i]) < Dif_rad) //
                 {
 
-                    if (abs(angle_old * 100 - angle_array[i] * 100) < Dif_angle) //10=0.01 杩樻湁鍦ㄤ复鐣岀偣涓婅繕闇€瑕佽€冭檻
+                    if (abs(angle_old * 100 - angle_array[i] * 100) < Dif_angle) //10=0.01 还有在临界点上还需要考虑
                     {
                         pixel_rad[j] += rad_array[i];
                         pixel_angle[j] += angle_array[i];
@@ -1524,12 +2025,12 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
         }
     }
 
-    //-----------------------绗簩灞傝鲸鍒�-------------------------------------------
+    //-----------------------第二层辨别-------------------------------------------
     //int lim_rad=0;
     //int lim_angle=0;
     int lim_count = 0;
-    int pixel_rad_tmp[10] = {0};     // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
-    float pixel_angle_tmp[10] = {0}; // 鐢ㄤ簬瀛樺偍鍚勪釜缁勫埆鐨勫儚绱犵偣
+    int pixel_rad_tmp[10] = {0};     // 用于存储各个组别的像素点
+    float pixel_angle_tmp[10] = {0}; // 用于存储各个组别的像素点
     int pixel_array_j_tmp[10] = {0};
     int tmp_count = 0;
 
@@ -1584,7 +2085,6 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
             pixel_array_j_tmp[tmp_count++] = pixel_array_j[j];
         }
     }
-
     if (tmp_count >= 1)
     {
         robot_temp[0].number = tmp_count;
@@ -1613,51 +2113,19 @@ void scan(unsigned char *addr) // *addr璞＄礌鏁版嵁瀛樺偍鐨勫湴鏂�
             // (pixel_angle_tmp[i]*572.95+(pixel_angle_zero[i]/pixel_array_zeroj[i])*572.95)>3600 ?
             //((pixel_angle_tmp[i]*572.95+(pixel_angle_zero[i]/pixel_array_zeroj[i])*572.95)-3600)/2 :
             //((pixel_angle_tmp[i]*572.95+(pixel_angle_zero[i]/pixel_array_zeroj[i])*572.95)+3600)/2;
+
             robot_temp[i + 1].count = pixel_array_j_tmp[i] + pixel_array_zeroj[i];
         }
     }
 
-    //------------------------澶勭悊鐗规畩鎯呭喌------------------------------------------
+    //------------------------处理特殊情况------------------------------------------
 
-    //-------------------------闅滅鐗╄竟鐣岀簿纭彁鍙�-------------------------------
-    int edge = 0;
-    int edge_i = 0;
-    int shift_pix = 0;
-    int e_x = 0;
-    int e_y = 0;
-    int e_r = 0;
-    for (edge = 0; edge < PicEdgePixCnt; edge++)
-    {
-        e_r = PicEdgePix[edge];
-        e_y = e_r * sin(((3600 + 900 - PicEdgeAngle[edge]) % 3600) * 3.14 / 1800);
-        e_x = e_r * cos(((3600 + 900 - PicEdgeAngle[edge]) % 3600) * 3.14 / 1800);
-
-        /*	if(((3600+900-PicEdgeAngle[edge]) % 3600)<3590 &&  ((3600+900-PicEdgeAngle[edge]) % 3600) > 10)
-		{
-			SafeFlag=1;
-		}
-		else
-		{
-			SafeFlag=0;
-		}
-	*/
-        for (edge_i = 0; edge_i < 10; edge_i++)
-        {
-            if (6 == rgb(addr, e_y, e_x))
-            {
-                showedge_x[FinalEdgePicCnt] = e_x;
-                showedge_y[FinalEdgePicCnt] = e_y;
-                FinalEdgePicCnt++;
-            }
-            e_x--;
-        }
-    }
+    //-------------------------------------------------------------------------
 }
-
 //==========================---link---=====================
-PNODE addBack(PNODE phead, int data, char *ip, int fd) //灏鹃儴鎻掑叆
+PNODE addBack(PNODE phead, int data, char *ip, int fd) //尾部插入
 {
-    node *pnew = malloc(sizeof(struct info)); //鍒嗛厤鍐呭瓨
+    node *pnew = malloc(sizeof(struct info)); //分配内存
     pnew->data = data;
     pnew->connected_flag = 1;
     pnew->iSocketClient = fd;
@@ -1674,19 +2142,20 @@ PNODE addBack(PNODE phead, int data, char *ip, int fd) //灏鹃儴鎻掑叆
     else
     {
         PNODE p = phead;
-        while (p->pNext != phead) //寰幆鍒板熬閮�
+        while (p->pNext != phead) //循环到尾部 尾插法
         {
             p = p->pNext;
         }
         p->pNext = pnew;
-        pnew->pNext = phead; //澶村熬鐩歌繛
+        pnew->pNext = phead; //头尾相连
     }
+
     return phead;
 }
 
-PNODE addBack_rec(PNODE phead, int data, char *ip) //灏鹃儴鎻掑叆
+PNODE addBack_rec(PNODE phead, int data, char *ip) //尾部插入
 {
-    node *pnew = malloc(sizeof(struct info)); //鍒嗛厤鍐呭瓨
+    node *pnew = malloc(sizeof(struct info)); //分配内存
     pnew->data = data;
     pnew->connected_flag = 0;
     pnew->iSocketClient = 111;
@@ -1703,17 +2172,18 @@ PNODE addBack_rec(PNODE phead, int data, char *ip) //灏鹃儴鎻掑叆
     else
     {
         PNODE p = phead;
-        while (p->pNext != phead) //寰幆鍒板熬閮�
+        while (p->pNext != phead) //循环到尾部
         {
             p = p->pNext;
         }
         p->pNext = pnew;
-        pnew->pNext = phead; //澶村熬鐩歌繛
+        pnew->pNext = phead; //头尾相连
     }
+    //showAll(phead);
     return phead;
 }
 
-//-----------------閾捐〃鍐掓场鎺掑簭---------------
+//-----------------链表冒泡排序---------------
 PNODE sortLink(PNODE phead)
 {
     int i = 0, j = 0, num = 0, temp_data = 0;
@@ -1761,9 +2231,9 @@ PNODE sortLink(PNODE phead)
 }
 
 //------------------------------------------------------
-PNODE addFront(PNODE phead, int data) //澶撮儴鎻掑叆
+PNODE addFront(PNODE phead, int data) //头部插入
 {
-    node *pnew = malloc(sizeof(struct info)); //鍒嗛厤鍐呭瓨
+    node *pnew = malloc(sizeof(struct info)); //分配内存
     pnew->data = data;
 
     if (phead == NULL)
@@ -1774,30 +2244,29 @@ PNODE addFront(PNODE phead, int data) //澶撮儴鎻掑叆
     else
     {
         PNODE p = phead;
-        while (p->pNext != phead) //寰幆鍒板熬閮�
+        while (p->pNext != phead) //循环到尾部
         {
             p = p->pNext;
         }
         p->pNext = pnew;
-        pnew->pNext = phead; //澶村熬鐩歌繛
+        pnew->pNext = phead; //头尾相连
         phead = pnew;
     }
 
     return phead;
 }
-
-void showAll(PNODE phead) //鏄炬樉绀哄叏閮�
+void showAll(PNODE phead) //显显示全部
 {
     if (phead == NULL)
     {
-        printf("閾捐〃涓虹┖锛乗n");
+        printf("链表为空！\n");
         return;
     }
     else if (phead->pNext == phead)
     {
         printf("%d %d %d %d %s %p %p\n", phead->data, phead->start_connect_flag,
                phead->connected_flag, phead->iSocketClient,
-               phead->send_ip, phead, phead->pNext); //鍙湁涓€涓妭鐐�
+               phead->send_ip, phead, phead->pNext); //只有一个节点
     }
     else
     {
@@ -1809,17 +2278,17 @@ void showAll(PNODE phead) //鏄炬樉绀哄叏閮�
             p = p->pNext;
         }
         printf("%d %d %d %d %s %p %p\n", p->data, p->start_connect_flag,
-               p->connected_flag, p->iSocketClient, p->send_ip, p, p->pNext); //鏈€鍚庝竴涓妭鐐广€�
+               p->connected_flag, p->iSocketClient, p->send_ip, p, p->pNext); //最后一个节点。
     }
 }
 
-PNODE findFirst(PNODE phead, int data) //妫€绱㈡暟鎹�
+PNODE findFirst(PNODE phead, int data) //检索数据
 {
     if (phead == NULL)
     {
         return NULL;
     }
-    else if (phead->pNext == phead) //濡傛灉澶磋妭鐐规槸瑕佹煡璇㈢殑鏁版嵁
+    else if (phead->pNext == phead) //如果头节点是要查询的数据
     {
         return phead;
     }
@@ -1830,11 +2299,11 @@ PNODE findFirst(PNODE phead, int data) //妫€绱㈡暟鎹�
         {
             if (p->data == data)
             {
-                return p; //濡傛灉鎵惧埌杩斿洖銆�
+                return p; //如果找到返回。
             }
             else
             {
-                p = p->pNext; //鎵句笉鍒扮户缁墠杩�
+                p = p->pNext; //找不到继续前进
             }
         }
         if (p->data == data)
@@ -1848,23 +2317,23 @@ PNODE findIp(PNODE phead, char *ip)
     //memcpy(pnew->send_ip, ip, 14);
     //if(strcmp(local_ip,all_ip[0])==0)
 
-    if (phead == NULL)
+    if (phead == NULL) //无节点
     {
         return NULL;
     }
-    else if (phead->pNext == phead) //濡傛灉澶磋妭鐐规槸瑕佹煡璇㈢殑鏁版嵁
+    else if (phead->pNext == phead) //只有一个节点（如果头节点是要查询的数据）
     {
         //return phead;
         if (strcmp(phead->send_ip, ip) == 0)
         {
-            return phead; //濡傛灉鎵惧埌杩斿洖銆�
+            return phead; //如果找到返回。
         }
         else
         {
             return NULL;
         }
     }
-    else
+    else //两个及以上节点
     {
         PNODE p = phead;
         while (p->pNext != phead)
@@ -1873,11 +2342,11 @@ PNODE findIp(PNODE phead, char *ip)
             if (strcmp(p->send_ip, ip) == 0)
 
             {
-                return p; //濡傛灉鎵惧埌杩斿洖銆�
+                return p; //如果找到返回。
             }
             else
             {
-                p = p->pNext; //鎵句笉鍒扮户缁墠杩�
+                p = p->pNext; //找不到继续前进
             }
         }
         //if (p->data == data)
@@ -1887,20 +2356,20 @@ PNODE findIp(PNODE phead, char *ip)
     }
 }
 
-PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
+PNODE deleteFirst(PNODE phead, int data) //删除数据
 {
-    //鍏堝垽鏂鍒犻櫎鐨勬暟鎹槸鍚﹀瓨鍦ㄣ€�
+    //先判断要删除的数据是否存在。
     PNODE p = findFirst(phead, data);
     if (p == NULL)
     {
-        printf("娌℃湁妫€绱㈠埌鏁版嵁锛乗n");
+        printf("没有检索到数据！\n");
         return phead;
     }
-    //鍒犻櫎闇€瑕佷娇鐢ㄥ弻鎸囬拡
+    //删除需要使用双指针
     PNODE p1, p2;
     p1 = phead;
     p2 = NULL;
-    //涓婇潰鐨勫垽鏂浣跨敤锛屽惁鍒欐渶鍚庝竴涓笉濂藉垽鏂�
+    //上面的判断要使用，否则最后一个不好判断
     while (p1->pNext != phead)
     {
         if (p1->data == data)
@@ -1910,7 +2379,7 @@ PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
         else
         {
             p2 = p1;
-            p1 = p1->pNext; //寰幆涓嬩釜鑺傜偣
+            p1 = p1->pNext; //循环下个节点
         }
     }
 
@@ -1928,8 +2397,8 @@ PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
             p = p->pNext;
         }
 
-        phead = phead->pNext; //鏀瑰彉澶磋妭鐐�
-        free(p1);             //閲婃斁p1
+        phead = phead->pNext; //改变头节点
+        free(p1);             //释放p1
         p->pNext = phead;
     }
 
@@ -1938,7 +2407,7 @@ PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
     //  {
     //      if (p1->data == data)
     //      {
-    //          printf("鍒犻櫎鐨勬暟鎹槸:%d %p\n", p1->data, p1);
+    //          printf("删除的数据是:%d %p\n", p1->data, p1);
     //          free(p1);
     //          phead = NULL;
     //          return phead;
@@ -1950,7 +2419,7 @@ PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
     //          {
     //              if (p1->data == data)
     //              {
-    //                  break;//鎵惧埌鍚庤烦鍑哄惊鐜�
+    //                  break;//找到后跳出循环
     //              }
     //              else
     //              {
@@ -1958,25 +2427,25 @@ PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
     //                  p1 = p1->pNext;
     //              }
     //          }
-    //      /* 杩欏効鏈€鍚庝竴涓暟鎹病鏈夎闂埌锛屾墍浠ュ厛瑕佺敤鏌ヨ锛屾煡璇竴閬� */
+    //      /* 这儿最后一个数据没有访问到，所以先要用查询，查询一遍 */
     //  }
-    //  if (p1 == phead)    //濡傛灉鏄涓€涓�
+    //  if (p1 == phead)    //如果是第一个
     //  {
     //      PNODE p = phead;
     //      while (p->pNext != phead)
     //      {
-    //          p = p->pNext;    //寰幆鍒板熬閮�
+    //          p = p->pNext;    //循环到尾部
     //      }
     //      phead = phead->pNext;
     //      p->pNext = phead;
-    //      printf("鍒犻櫎鐨勬暟鎹槸:%d %p\n", p1->data, p1);
+    //      printf("删除的数据是:%d %p\n", p1->data, p1);
     //      free(p1);
     //      p1 = NULL;
     //  }
     //  else
     //  {
     //      p2->pNext = p1->pNext;
-    //      printf("鍒犻櫎鐨勬暟鎹槸:%d %p\n", p1->data, p1);
+    //      printf("删除的数据是:%d %p\n", p1->data, p1);
     //      free(p1);
     //  }
     return phead;
@@ -1984,18 +2453,18 @@ PNODE deleteFirst(PNODE phead, int data) //鍒犻櫎鏁版嵁
 
 PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
 {
-    //鍏堝垽鏂鍒犻櫎鐨勬暟鎹槸鍚﹀瓨鍦ㄣ€�
+    //先判断要删除的数据是否存在。
     PNODE p = findFirst(phead, data);
     if (p == NULL)
     {
-        printf("娌℃湁妫€绱㈠埌鏁版嵁锛乗n");
+        printf("没有检索到数据！\n");
         return phead;
     }
-    //鍒犻櫎闇€瑕佷娇鐢ㄥ弻鎸囬拡
+    //删除需要使用双指针
     PNODE p1, p2;
     p1 = phead;
     p2 = NULL;
-    //涓婇潰鐨勫垽鏂浣跨敤锛屽惁鍒欐渶鍚庝竴涓笉濂藉垽鏂�
+    //上面的判断要使用，否则最后一个不好判断
     while (p1->pNext != phead)
     {
         if (p1->data == data)
@@ -2005,7 +2474,7 @@ PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
         else
         {
             p2 = p1;
-            p1 = p1->pNext; //寰幆涓嬩釜鑺傜偣
+            p1 = p1->pNext; //循环下个节点
         }
     }
 
@@ -2013,7 +2482,7 @@ PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
     {
         p2->pNext = p1->pNext;
 
-        *ptemp = p1->pNext; //鎸囧悜涓嬩釜鑺傜偣
+        *ptemp = p1->pNext; //指向下个节点
 
         free(p1);
         p1 = NULL;
@@ -2026,18 +2495,18 @@ PNODE deleteNode(PNODE phead, int data, PNODE *ptemp)
             p = p->pNext;
         }
 
-        phead = phead->pNext; //鏀瑰彉澶磋妭鐐�
+        phead = phead->pNext; //改变头节点
 
-        *ptemp = p1->pNext; //鎸囧悜涓嬩釜鑺傜偣
+        *ptemp = p1->pNext; //指向下个节点
 
-        free(p1); //閲婃斁p1
+        free(p1); //释放p1
         p1 = NULL;
         p->pNext = phead;
     }
     return phead;
 }
 
-PNODE insertNode(PNODE phead, int finddata, int data) //鎻掑叆鏁版嵁
+PNODE insertNode(PNODE phead, int finddata, int data) //插入数据
 {
     PNODE pnew = malloc(sizeof(node));
     pnew->data = data;
@@ -2045,7 +2514,7 @@ PNODE insertNode(PNODE phead, int finddata, int data) //鎻掑叆鏁版嵁
     PNODE p = findFirst(phead, finddata);
     if (p == NULL)
     {
-        printf("娌℃湁鎵惧埌瑕佹彃鍏ユ暟鎹殑鏍囪锛乗n");
+        printf("没有找到要插入数据的标记！\n");
     }
     else
     {
@@ -2072,23 +2541,23 @@ PNODE insertNode(PNODE phead, int finddata, int data) //鎻掑叆鏁版嵁
             {
                 p = p->pNext;
             }
-            //鎻掑湪鍓嶉潰
+            //插在前面
             p->pNext = pnew;
             pnew->pNext = phead;
             phead = pnew;
 
-            //鎻掑湪鍚庨潰
+            //插在后面
             /*  pnew->pNext = phead->pNext; 
-			phead->pNext = pnew;*/
+            phead->pNext = pnew;*/
         }
         else
         {
-            //鎻掑湪鍓嶉潰
+            //插在前面
             p2->pNext = pnew;
             pnew->pNext = p1;
-            //鎻掑湪鍚庨潰
+            //插在后面
             /*pnew->pNext = p1->pNext; 
-			p1->pNext = pnew;*/
+            p1->pNext = pnew;*/
         }
     }
 
@@ -2096,7 +2565,7 @@ PNODE insertNode(PNODE phead, int finddata, int data) //鎻掑叆鏁版嵁
 }
 
 //---------------------------------------------------------
-int getNum(PNODE phead) //杩斿洖閾捐〃鐨勪釜鏁�
+int getNum(PNODE phead) //返回链表的个数
 {
     if (phead == NULL)
     {

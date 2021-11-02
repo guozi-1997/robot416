@@ -35,7 +35,6 @@
 #ifndef AF_CAN
 #define AF_CAN PF_CAN
 #endif
-
 int s;
 unsigned long nbytes;
 struct sockaddr_can addr;

@@ -1,5 +1,13 @@
 {
     "files.associations": {
-        "io.h": "c"
+        "io.h": "c",
+        "cmath": "c",
+        "complex": "c",
+        "way.h": "c",
+        "global.h": "c",
+        "*.tcc": "c",
+        "bitset": "c",
+        "chrono": "c",
+        "algorithm": "c"
     }
 }

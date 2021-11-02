@@ -1,9 +1,11 @@
 export PATH=$PATH:/home/guozi/pkg/arm-2009q3/bin
 Makefile使用前请将这句话先执行一遍，因为这个Ubuntu里有一个比较新的交叉编译器。
 使用前要把这个旧的交叉编译器的路径放到环境变量里，如果想要永久使用，请更新/etc/profile文件
+环境变量设置   vi /etc/profile   
+在文件末端加上 export=$PATH:/usr/local/arm/arm-2009q3/bin  就可以了
 
 imwheel 
-一个已下载的小插件，用于加快鼠标滚轮速度，方便翻阅代码
+一个已下载的小插件，用于加快鼠标滚轮速度，方便翻阅代码,在终端输入： imwheel
 
 使用分支来对文件进行修改的流程：
 git checkout -b guozi
@@ -79,4 +81,16 @@ nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32�
 pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
 上述是修改v和w的方式，不局限于主线程。可在任何线程中直接使用
 
+2021年11月01日16:49:04
+我们将评估函数从min_dir中分离出来独立编写，提高了代码的可用性，可更改性。
+评估函数：goalList()；
+
+get_x表示机器人朝向为x的方向，行进的距离
+get_y表示机器人右侧为y正向偏移的距离，这一点要弄清楚
+
+当你完全看懂别人写的其中一段代码的时候，你就有足够的勇气对其中的内容进行修改！
+
+向右转雷达加，向左雷达减
+中断线程不要使用ctrl + z，会导致段错误。使用ctrl + c来中断线程
 PS:在头文件中的变量不要进行初始化赋值！否则编译的时候会出现错误
+way.c1329行的i值好像有点问题
