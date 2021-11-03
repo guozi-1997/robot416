@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"cmath": "c",
+			"*.tcc": "cpp",
+			"type_traits": "c"
+		}
+	}
+}

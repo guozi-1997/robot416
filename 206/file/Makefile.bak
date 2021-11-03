@@ -1,0 +1,3 @@
+obj-y += usart.o
+obj-y += can.o
+
