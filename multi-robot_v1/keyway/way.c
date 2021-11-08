@@ -72,6 +72,7 @@ struct Distance
     int cost_i;
     int cost_j;
 } dis;
+
 int goalListLeader(struct Distance *dis, int i, int j, int p)
 {
     /********一些评估函数用的上的预处理数据************/
@@ -652,7 +653,7 @@ void min_cir(unsigned char *addr)
     //PathPlanningAng[6][256][10]={0};
     //PathPlanningPix[6][256][10]={0};
 
-    if (FilterCount && FilterCount2 && (!isArrivedDirect_Flag))
+    if (FilterCount && FilterCount2 /*&& (!isArrivedDirect_Flag)*/)
     {
         OkPath.Ok_Cnt_PerLayer = 0;
         Best_OkPath.Best_Ok_Cnt = 0;
@@ -900,10 +901,12 @@ void min_cir(unsigned char *addr)
                 {
                     for (j = i + 1; j < OkPath.Ok_Cnt_PerLayer; j++)
                     {
-                        goalListLeader(&dis, i, j, p);
+                        if (goalListLeader(&dis, i, j, p) != 0)
+                        {
+                            printf("goalListLeader error\n");
+                        }
                     }
                 }
-
                 Best_OkPath.Best_Layer_Num = 4;
                 for (i = 0; i < OkPath.Ok_Cnt_PerLayer; i++)
                 {
@@ -949,7 +952,10 @@ void min_cir(unsigned char *addr)
 
                 Cord_PerLayer.Cordinate_X[3][0] = stepdis[0] * (cos(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[2][0] * 3.14 / 1800) + cos(Cord_PerLayer.Cordinate_Ang[3][0] * 3.14 / 1800));
                 Cord_PerLayer.Cordinate_Y[3][0] = stepdis[0] * (sin(Cord_PerLayer.Cordinate_Ang[0][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[1][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[2][0] * 3.14 / 1800) + sin(Cord_PerLayer.Cordinate_Ang[3][0] * 3.14 / 1800));
-
+                /*                 printf("Cord_PerLayer.Cordinate_X[0][0] = %f\n", Cord_PerLayer.Cordinate_X[0][0]);
+                printf("Cord_PerLayer.Cordinate_Y[0][0] = %f\n", Cord_PerLayer.Cordinate_Y[0][0]);
+                printf("Cord_PerLayer.Cordinate_X[1][0] = %f\n", Cord_PerLayer.Cordinate_X[1][0]);
+                printf("Cord_PerLayer.Cordinate_X[1][0] = %f\n", Cord_PerLayer.Cordinate_Y[1][0]); */
                 //--------赋值用于机器人路径------------------------------
                 //Cord_PerLayer.Cordinate_Ang[0][0]=Best_OkPath.Best_Ok_PerLayer_Ang[Best_OkPath.Best_Ok_Cnt][0];
 
@@ -978,6 +984,7 @@ void min_cir(unsigned char *addr)
 
                 //-----判断机器人开始运动前是否有可行的RRT路径---
                 //------没有就重新规划-----------------------------------------
+                printf("Best_OkPath.Best_Ok_Cnt = %d\n", Best_OkPath.Best_Ok_Cnt);
                 if (!Best_OkPath.Best_Ok_Cnt)
                 {
                     RRT_Ok_Flag = 0;
@@ -995,6 +1002,7 @@ void min_cir(unsigned char *addr)
                 if (Best_OkPath.Best_Ok_Cnt)
                 {
                     RRT_Ok_Flag = 1;
+                    isArrivedDirect_Flag = 1;
                 }
             }
         }

@@ -5,8 +5,8 @@
 #include "MyMatrix.h"
 #include "matrix.h"
 
-int ekf_ts = 1000000; //你可以通过ekf_ts决定滤波频率
-
+int ekf_ts = 1000000;	  //你可以通过ekf_ts决定滤波频率
+int ControlFun_ts = 2000; //毫秒，你可以通过ControlFun_ts确定控制频率
 struct _globals
 {
 	int order_flag; //令牌
@@ -215,9 +215,9 @@ void ControlFun(void)
 	float w_omiga = 0.0;
 
 	float x0 = 0, y0 = 0;
-	float x1 = 1, y1 = 1;
-	float x2 = 2, y2 = 0;
-	float x3 = 2, y3 = 1;
+	float x1 = 0, y1 = 0;
+	float x2 = 0, y2 = 0;
+	float x3 = 0, y3 = 0;
 
 	float x_p = 0.0, y_p = 0.0;				  //期望路径
 	float x_p_der = 0.0, y_p_der = 0.0;		  //期望路径一阶导
@@ -235,6 +235,7 @@ void ControlFun(void)
 	float ks = 1.8, kw = 0.1; //参数选取满足1.44kw>=vc*ke
 	static float path_radiu = 0.5;
 
+	int value_flag = 0;
 	int path_follow_flag = 0;
 	int error_thta = 0;
 	float curve_radio = 0.0;
@@ -243,74 +244,114 @@ void ControlFun(void)
 	//----路径跟踪测试------//
 	//------将脉冲值转换为角速度、线速度标准值-----//
 	//signal(SIGALRM, ControlFun);
+	//这两个值一直都是0
+	x0 = 0;
+	y0 = 0;
+	while (1)
+	{
+		//printf("%d\n", RRT_Ok_Flag);
+		/************如果RRT路径规划好了之后，就赋值三个点****************/
+		if (isArrivedDirect_Flag)
+		{
+			path_follow_flag = 1;
+			value_flag = 1;
+			isArrivedDirect_Flag = 0;
+		}
+		else
+			value_flag = 0;
 
-	timer_cnt++;
-	//if(w<1.0){
-	pthread_rwlock_rdlock(&rwlock);
-	frame_send.data[1] = (int)dlta_d >> 8;
-	frame_send.data[2] = (int)dlta_d;
-	frame_send.data[3] = (int)dlta_a >> 8;
-	frame_send.data[4] = (int)dlta_a;
-	frame_send.data[5] = 0;
-	nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
-	pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
+		/* 		if (w >= 1.0)
+		{
+			w = 0.;
+			value_flag = 0;
+			RRT_Ok_Flag = 0;
+			path_follow_flag = 0;
+			dlta_a = 0;
+		} */
 
-	addr_len = sizeof(addr);
-	len = 0;
+		if (value_flag)
+		{
+			/**********注意这里X代表横向，Y代表纵向*********************/
+			x1 = Cord_PerLayer.Cordinate_X[0][0] / 1000;
+			y1 = Cord_PerLayer.Cordinate_Y[0][0] / 1000;
+			x2 = Cord_PerLayer.Cordinate_X[1][0] / 1000;
+			y2 = Cord_PerLayer.Cordinate_Y[1][0] / 1000;
+			x3 = Cord_PerLayer.Cordinate_X[2][0] / 1000;
+			y3 = Cord_PerLayer.Cordinate_Y[2][0] / 1000;
+			//path_follow_flag = 1;
+			printf("x1 = %f,y1 = %f\n", x1, y1);
+			printf("x1 = %f,y1 = %f\n", x2, y2);
+			printf("x1 = %f,y1 = %f\n", x3, y3);
+			value_flag = 0;
+			w = 0.; //在旧的路径走完之前，w只会执行一次等于0.
+		}
 
-	nbytes = recvfrom(s, &frame_rev, sizeof(struct can_frame), 0, (struct sockaddr *)&addr, &len);
+		//printf("%d\n", __LINE__);
+		timer_cnt++;
 
-	ifr.ifr_ifindex = addr.can_ifindex;
-	ioctl(s, SIOCGIFNAME, &ifr);
+		//if(w<1.0){
+		/********向底部发出指令********/
+		pthread_rwlock_rdlock(&rwlock);
+		frame_send.data[1] = (int)dlta_d >> 8;
+		frame_send.data[2] = (int)dlta_d;
+		frame_send.data[3] = (int)dlta_a >> 8;
+		frame_send.data[4] = (int)dlta_a;
+		frame_send.data[5] = 0;
+		nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+		pthread_rwlock_unlock(&rwlock);							 //解锁，如果其他的线程需要对速度进行改变，则需要锁
 
-	get_y = (-1) * (short)(frame_rev.data[0] * 256 + frame_rev.data[1]); //代表y偏移量前进为-
+		//******************************************//
 
-	get_x = (-1) * (short)(frame_rev.data[2] * 256 + frame_rev.data[3]); //代表x偏移量,左为正
-	get_tht = (short)(frame_rev.data[4] * 256 + frame_rev.data[5]);		 //右转为正
-																		 //}
-	//======将航位推算结果转换成测量值======//
-	x_measure = -1.0 * (double)get_x / 1000.0;
-	y_measure = -1.0 * (double)get_y / 1000.0; //get_x、get_y单位mm/s，get_thta单位0.1°/s
-	thta_measure = (double)get_tht * 3.14159 / 1800.0;
-	//============================================//
-	if (w > 1.0)
+		addr_len = sizeof(addr);
+		len = 0;
+
+		nbytes = recvfrom(s, &frame_rev, sizeof(struct can_frame), 0, (struct sockaddr *)&addr, &len);
+
+		ifr.ifr_ifindex = addr.can_ifindex;
+		ioctl(s, SIOCGIFNAME, &ifr);
+
+		get_y = (-1) * (short)(frame_rev.data[0] * 256 + frame_rev.data[1]); //代表y偏移量前进为-
+		get_x = (-1) * (short)(frame_rev.data[2] * 256 + frame_rev.data[3]); //代表x偏移量,左为正
+		get_tht = (short)(frame_rev.data[4] * 256 + frame_rev.data[5]);		 //右转为正
+																			 //}
+		//======将航位推算结果转换成测量值======//
+		x_measure = -1.0 * (double)get_x / 1000.0;
+		y_measure = -1.0 * (double)get_y / 1000.0; //get_x、get_y单位mm/s，get_thta单位0.1°/s
+		thta_measure = (double)get_tht * 3.14159 / 1800.0;
+		//============================================//
+		/* 	if (w > 1.0)
 	{
 		w = w - 1.0;
 		bezier_cnt = 1;
-	}
-	if (x_measure * 100 + 10 >= x3 * 100)
-	{
-
-		dlta_a = 0;
-		dlta_d = 0;
-	}
-	else
-	{
-		if (timer_cnt < 251 && w < 1.0)
-		//	if(timer_cnt<201 )
+	} */
+		if (path_follow_flag)
 		{
 
-			if (thta_measure < (-0.001))
+			if (timer_cnt < 251 && w < 1.0)
+			//	if(timer_cnt<201 )
 			{
-				thta_measure = -thta_measure;
-			}
-			else if (thta_measure > 0.001)
-			{
-				thta_measure = -thta_measure + 2 * 3.1415926;
-			}
-			else
-			{
-				thta_measure = thta_measure;
-			}
 
-			thta_measure = thta_measure + 1 * 3.1415926 / 2;
+				if (thta_measure < (-0.001))
+				{
+					thta_measure = -thta_measure;
+				}
+				else if (thta_measure > 0.001)
+				{
+					thta_measure = -thta_measure + 2 * pi;
+				}
+				else
+				{
+					thta_measure = thta_measure;
+				}
 
-			//***************以下算法实现部分**********************************//
-			//=====步骤1 :设定vc,计算期望路径一阶导，二阶导==//
-			//vc=0.1;				//v=vc=200mm/s
+				thta_measure = thta_measure + 1 * pi / 2;
 
-			//**********圆轨迹**********************//
-			/*
+				//***************以下算法实现部分**********************************//
+				//=====步骤1 :设定vc,计算期望路径一阶导，二阶导==//
+				//vc=0.1;				//v=vc=200mm/s
+
+				//**********圆轨迹**********************//
+				/*
 		x_p = path_radiu*cos(w) - path_radiu;
 		y_p = path_radiu*sin(w);
 
@@ -321,10 +362,10 @@ void ControlFun(void)
 		y_p_derder = -path_radiu*sin(w);
 		*/
 
-			//**********圆轨迹**********************//
+				//**********圆轨迹**********************//
 
-			//**********直线轨迹y=-x  第二象限**********************//
-			/*
+				//**********直线轨迹y=-x  第二象限**********************//
+				/*
 		x_p = -w;
 		y_p = w ;
 
@@ -334,12 +375,12 @@ void ControlFun(void)
 		x_p_derder = 0;
 		y_p_derder = 0;
 		*/
-			//**********直线轨迹y=-x  第二象限**********************//
+				//**********直线轨迹y=-x  第二象限**********************//
 
-			//*****注意:跟踪直线有方向区别*********//
-			//**********直线轨迹y = x  第一象限**********************//
+				//*****注意:跟踪直线有方向区别*********//
+				//**********直线轨迹y = x  第一象限**********************//
 
-			/* 		x_p = w;
+				/* 		x_p = w;
 		y_p = w;
 
 		x_p_der = 1;
@@ -348,10 +389,10 @@ void ControlFun(void)
 		x_p_derder = 0;
 		y_p_derder = 0; */
 
-			//**********直线轨迹y = x  第一象限**********************//
-			/* 就是来跑直线的 */
-			/* ***********一次贝塞尔曲线*************************** */
-			/* 		x_p = (1 - w) * x0 + w * x1;
+				//**********直线轨迹y = x  第一象限**********************//
+				/* 就是来跑直线的 */
+				/* ***********一次贝塞尔曲线*************************** */
+				/* 		x_p = (1 - w) * x0 + w * x1;
 		y_p = (1 - w) * y0 + w * y1;
 
 		x_p_der = -x0 + x1;
@@ -360,8 +401,8 @@ void ControlFun(void)
 		x_p_derder = 0;
 		y_p_derder = 0; */
 
-			//********** 对称三阶贝塞尔曲线轨迹**********************//
-			/*
+				//********** 对称三阶贝塞尔曲线轨迹**********************//
+				/*
 		x_p = 2*w*w*w-3*w*w;
 		y_p = 2*w*w*w-3*w*w+3*w;
 
@@ -371,9 +412,9 @@ void ControlFun(void)
 		x_p_derder =12*w-6;
 		y_p_derder =12*w-6;
 		*/
-			//********** 优化三阶贝塞尔曲线轨迹**********************//
+				//********** 优化三阶贝塞尔曲线轨迹**********************//
 
-			/*
+				/*
 		x_p = 2*w*w*w-3*w*w;
 		y_p = -0.25*w*w*w+0.9*w*w+1.35*w;
 
@@ -383,22 +424,22 @@ void ControlFun(void)
 		x_p_derder =12*w-6;
 		y_p_derder =-1.5*w+1.8;	
 		*/
-			x_p = pow((1 - w), 3) * x0 + 3 * pow((1 - w), 2) * w * x1 +
-				  3 * (1 - w) * w * w * x2 + pow(w, 3) * x3;
-			y_p = pow((1 - w), 3) * y0 + 3 * w * pow((1 - w), 2) * y1 +
-				  3 * (1 - w) * w * w * y2 + pow(w, 3) * y3;
-			x_p_der = 3 * pow((1 - w), 2) * x0 + 3 * (1 - w) * (1 - 3 * w) * x1 +
-					  3 * (2 - 3 * w) * w * x2 + 3 * pow(w, 2) * x3;
-			y_p_der = 3 * pow((1 - w), 2) * y0 + 3 * (1 - w) * (1 - 3 * w) * y1 +
-					  3 * (2 - 3 * w) * w * y2 + 3 * pow(w, 2) * y3;
-			x_p_derder = 6 * (1 - w) * x0 - 6 * (2 - 3 * w) * x1 +
-						 6 * (1 - 3 * w) * x2 + 6 * w * x3;
-			y_p_derder = 6 * (1 - w) * y0 - 6 * (2 - 3 * w) * y1 +
-						 6 * (1 - 3 * w) * y2 + 6 * w * y3;
-			//*************连续不停车运动第一段********************************//
-			//	if(!bezier_cnt)
-			{
-				/* 			x_p = 1.6 * w * w * w - 2.4 * w * w;
+				x_p = pow((1 - w), 3) * x0 + 3 * pow((1 - w), 2) * w * x1 +
+					  3 * (1 - w) * w * w * x2 + pow(w, 3) * x3;
+				y_p = pow((1 - w), 3) * y0 + 3 * w * pow((1 - w), 2) * y1 +
+					  3 * (1 - w) * w * w * y2 + pow(w, 3) * y3;
+				x_p_der = 3 * pow((1 - w), 2) * x0 + 3 * (1 - w) * (1 - 3 * w) * x1 +
+						  3 * (2 - 3 * w) * w * x2 + 3 * pow(w, 2) * x3;
+				y_p_der = 3 * pow((1 - w), 2) * y0 + 3 * (1 - w) * (1 - 3 * w) * y1 +
+						  3 * (2 - 3 * w) * w * y2 + 3 * pow(w, 2) * y3;
+				x_p_derder = 6 * (1 - w) * x0 - 6 * (2 - 3 * w) * x1 +
+							 6 * (1 - 3 * w) * x2 + 6 * w * x3;
+				y_p_derder = 6 * (1 - w) * y0 - 6 * (2 - 3 * w) * y1 +
+							 6 * (1 - 3 * w) * y2 + 6 * w * y3;
+				//*************连续不停车运动第一段********************************//
+				//	if(!bezier_cnt)
+				{
+					/* 			x_p = 1.6 * w * w * w - 2.4 * w * w;
 			y_p = 1.8 * w * w * w - 2.7 * w * w + 2.7 * w;
 
 			x_p_der = 5.4 * w * w - 4.8 * w;
@@ -406,11 +447,11 @@ void ControlFun(void)
 
 			x_p_derder = 10.8 * w - 4.8;
 			y_p_derder = 10.8 * w - 5.4; */
-			}
+				}
 
-			//*************连续不停车运动第二段********************************//
-			//else
-			/*{
+				//*************连续不停车运动第二段********************************//
+				//else
+				/*{
 			x_p = -2*w*w*w+3*w*w;
 			y_p = 0.3*w*w*w+0.3*w*w+1.2*w;
 
@@ -420,103 +461,103 @@ void ControlFun(void)
 			x_p_derder =-12*w+6;
 			y_p_derder =1.8*w+0.6;	
 		//}*/
-			//********计算不同路劲参数对应的曲率、规划速度========//
-			curve_radio = fabs((x_p_der * y_p_derder - y_p_der * x_p_derder) / (pow(x_p_der * x_p_der + y_p_der * y_p_der, 1.5)));
-			//vc=pow(a_rad_max/curve_radio,0.5);
-			vc = 0.1;
-			//printf("vc=%f\n",vc);
-			//file_write_xy(file_fd,timer_cnt , (int)(vc*1000));
-			if (vc > 0.4)
-				vc = 0.4;
+				//********计算不同路径参数对应的曲率、规划速度========//
+				curve_radio = fabs((x_p_der * y_p_derder - y_p_der * x_p_derder) / (pow(x_p_der * x_p_der + y_p_der * y_p_der, 1.5)));
+				//vc=pow(a_rad_max/curve_radio,0.5);
+				vc = 0.1;
+				//printf("vc=%f\n",vc);
+				//file_write_xy(file_fd,timer_cnt , (int)(vc*1000));
+				if (vc > 0.4)
+					vc = 0.4;
 
-			//**********三阶贝塞尔曲线轨迹**********************//
+				//**********三阶贝塞尔曲线轨迹**********************//
 
-			//=====步骤2:求thta_p,前向、横向跟踪误差===//
-			thta_p = atan2(y_p_der, x_p_der);
+				//=====步骤2:求thta_p,前向、横向跟踪误差===//
+				thta_p = atan2(y_p_der, x_p_der);
 
-			if (thta_p < (-0.001))
-			{
-				thta_p = thta_p + 6.2832;
+				if (thta_p < (-0.001))
+				{
+					thta_p = thta_p + 2 * pi;
+				}
+				else
+				{
+					thta_p = thta_p;
+				}
+				/**********error_s前向跟踪误差，error_e横向跟踪误差************/
+				error_s = (x_measure - x_p) * cos(thta_p) + (y_measure - y_p) * sin(thta_p);
+				error_e = -1 * (x_measure - x_p) * sin(thta_p) + (y_measure - y_p) * cos(thta_p);
+
+				thta_e = thta_measure - thta_p;
+
+				//*******贝塞尔曲线加的***************//
+
+				if (thta_e > 2 * pi || thta_measure > 2 * pi)
+				{
+					thta_measure = thta_measure - 2 * pi;
+				}
+
+				if (thta_e > 0.001)
+				{
+					thta_e = thta_e - 2 * pi; //防止出现thta_p由360->0跳变时，thta_measure滞后，导致角速度跳变成不可控值而使系统不可控
+											  //*******贝塞尔曲线删除的***************//
+											  //thta_measure=thta_measure - 6.2832;
+				}
+
+				//=====步骤3:求w导数，thta_p导数,角速度dlta_a==//
+				w_der = (vc * cos(thta_e) + ks * error_s) / (sqrt(x_p_der * x_p_der + y_p_der * y_p_der));
+				thta_p_der = w_der * (y_p_derder * x_p_der - y_p_der * x_p_derder) / (x_p_der * x_p_der + y_p_der * y_p_der);
+				w_omiga = kw * (thta_p + atan2(-error_e, ke) - thta_measure) + thta_p_der + ke * (thta_p_der * error_s - vc * sin(thta_measure - thta_p)) / (error_e * error_e + ke * ke);
+
+				//=====步骤4:更新路径参数w===============//
+				w = w + w_der;
+
+				//***************以上算法实现部分**********************************//
+
+				//====系统平台中的一些说明======//
+				//===实际控制，线速度单位mm/s，角速度单位1/10°/s==//
+				//===dlta_d>0为前进，get_y<0,    dlta_d<0为后退，get_y>0    ======//
+				//===dlta_a>0时候左转get_x>0，get_thta由0->-1800->1800->0  ======//
+				//===dlta_a<0时候右转get_x<0，get_thta由0->1800->-1800->0  ======//
+
+				dlta_d = vc * 1000;
+				dlta_a = 10 * w_omiga * 57.296; //180/3.14;
+
+				if (dlta_a > 400)
+				{
+					dlta_a = 400;
+				}
+				if (dlta_a < -400)
+				{
+					dlta_a = -400;
+				}
+				file_write_xy(file_fd, (int)(w * 100), dlta_a);
+
+				printf("w_der=%f\n", w_der * 57.296);
+				printf("error_s=%f cm\n", error_s * 100);
+				printf("error_e=%f cm\n", error_e * 100);
+				printf("w=%f\n", w);
+				printf("dlta_a=%d\n", dlta_a);
+				printf("dlta_d=%d\n", dlta_d);
+				printf("x_measure=%f cm\n", x_measure * 100);
+				printf("y_measure=%f cm\n", y_measure * 100);
+				printf("thta_measure=%f \n", thta_measure * 57.296);
+				printf("thta_p=%f  \n", thta_p * 57.296);
+
+				//error_thta=(int)(atan2(-error_e,ke)*10000.0);
+				//error_thta=(int)(error_e*10000.0);
+				//printf("thta_error=%d \n",error_thta);
+				//file_write_xy(file_fd, (int)(w*100), (int)(error_e*1000));
+				//file_write_xy(file_fd, (int)(w*100), (int)(thta_e*573));
+				//file_write_xy(file_fd, -get_x, -get_y);
+				printf("\n");
 			}
 			else
 			{
-				thta_p = thta_p;
+				dlta_d = 0;
+				dlta_a = 0;
 			}
-
-			error_s = (x_measure - x_p) * cos(thta_p) + (y_measure - y_p) * sin(thta_p);
-			error_e = -1 * (x_measure - x_p) * sin(thta_p) + (y_measure - y_p) * cos(thta_p);
-
-			thta_e = thta_measure - thta_p;
-
-			//*******贝塞尔曲线加的***************//
-
-			if (thta_e > 2 * pi || thta_measure > 2 * pi)
-			{
-				thta_measure = thta_measure - 2 * pi;
-			}
-
-			if (thta_e > 0.001)
-			{
-				thta_e = thta_e - 2 * pi; //防止出现thta_p由360->0跳变时，thta_measure滞后，导致角速度跳变成不可控值而使系统不可控
-										  //*******贝塞尔曲线删除的***************//
-										  //thta_measure=thta_measure - 6.2832;
-			}
-
-			//=====步骤3:求w导数，thta_p导数,角速度dlta_a==//
-			w_der = (vc * cos(thta_e) + ks * error_s) / (sqrt(x_p_der * x_p_der + y_p_der * y_p_der));
-			thta_p_der = w_der * (y_p_derder * x_p_der - y_p_der * x_p_derder) / (x_p_der * x_p_der + y_p_der * y_p_der);
-			w_omiga = kw * (thta_p + atan2(-error_e, ke) - thta_measure) + thta_p_der + ke * (thta_p_der * error_s - vc * sin(thta_measure - thta_p)) / (error_e * error_e + ke * ke);
-
-			//=====步骤4:更新路径参数w===============//
-			w = w + w_der;
-
-			//***************以上算法实现部分**********************************//
-
-			//====系统平台中的一些说明======//
-			//===实际控制，线速度单位mm/s，角速度单位1/10°/s==//
-			//===dlta_d>0为前进，get_y<0,    dlta_d<0为后退，get_y>0    ======//
-			//===dlta_a>0时候左转get_x>0，get_thta由0->-1800->1800->0  ======//
-			//===dlta_a<0时候右转get_x<0，get_thta由0->1800->-1800->0  ======//
-
-			dlta_d = vc * 1000;
-			dlta_a = 10 * w_omiga * 57.296; //180/3.14;
-
-			if (dlta_a > 400)
-			{
-				dlta_a = 400;
-			}
-			if (dlta_a < -400)
-			{
-				dlta_a = -400;
-			}
-			file_write_xy(file_fd, (int)(w * 100), dlta_a);
-
-			printf("w_der=%f\n", w_der * 57.296);
-			printf("error_s=%f cm\n", error_s * 100);
-			printf("error_e=%f cm\n", error_e * 100);
-			printf("w=%f\n", w);
-			printf("dlta_a=%d\n", dlta_a);
-			printf("dlta_d=%d\n", dlta_d);
-			printf("x_measure=%f cm\n", x_measure * 100);
-			printf("y_measure=%f cm\n", y_measure * 100);
-			printf("thta_measure=%f \n", thta_measure * 57.296);
-			printf("thta_p=%f  \n", thta_p * 57.296);
-
-			//error_thta=(int)(atan2(-error_e,ke)*10000.0);
-			//error_thta=(int)(error_e*10000.0);
-			//printf("thta_error=%d \n",error_thta);
-			//file_write_xy(file_fd, (int)(w*100), (int)(error_e*1000));
-			//file_write_xy(file_fd, (int)(w*100), (int)(thta_e*573));
-			//file_write_xy(file_fd, -get_x, -get_y);
-			printf("\n");
 		}
-		else
-		{
-			dlta_d = 0;
-			dlta_a = 0;
-		}
-	}
-	/*
+		/*
 	else
 	{
 		frame_send.data[1]=(int)dlta_d>>8;
@@ -539,6 +580,8 @@ void ControlFun(void)
 		get_tht=(short)(frame_rev.data[4]*256+frame_rev.data[5]);		//右转为正	
 	}
 	*/
+		milliseconds_sleep(ControlFun_ts);
+	}
 }
 int main(int argc, char **argv)
 {
@@ -569,6 +612,7 @@ int main(int argc, char **argv)
 	pthread_t tTreadID2;
 	pthread_t tTreadID3;
 	pthread_t tTreadID4;
+	pthread_t tTreadID5;
 	//------------lidar-----------------//
 	pthread_t thrd_id1, thrd_id2;
 	pthread_attr_t attr; //设置thrd_id1线程的属性
@@ -675,7 +719,12 @@ int main(int argc, char **argv)
 
 	if (setitimer(ITIMER_REAL, &tick, NULL) < 0)
 		printf("Set timer failed!\n"); */
-
+	res = pthread_create(&tTreadID5, NULL, ControlFun, NULL);
+	if (res != 0)
+	{
+		printf("Create thread failed!");
+		exit(res);
+	}
 	//pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
 	/*所有关于卡尔曼滤波的线程都从上面这行开始，如果你想终止卡尔曼的所有程序，请将上一行屏蔽，这对主程序不会有影响*/
 	char *local_ip = NULL;

@@ -33,28 +33,6 @@ struct info
 	struct info *pNext;
 };
 
-typedef struct Reachable_Path_Pre
-{
-	int Reach_Angle[128];
-	int Reach_Distance[128];
-	int Reach_Cnt;
-} T_Reach;
-
-typedef struct Reachable_Path_Filter
-{
-	int ReachFilter_Angle[128];
-	int ReachFilter_Distance[128];
-	int ReachFilter_Cnt;
-} T_ReachFilter;
-
-typedef struct Lidar_Data_Cnt
-{
-	int Lidar_Data_Dis[2000];
-	int Lidar_Data_Ang[2000];
-	int Lidar_Data_Pix[2000];
-	int Lidar_Data_Cnt;
-} T_Lidar_Cnt;
-
 typedef struct info node, *PNODE;
 /* Point2D PointOnBezierOneControl(Point2D *cp, float t);
 void ComputeOneBezier(Point2D *cp, int numberOfPoints, Point2D *curve);

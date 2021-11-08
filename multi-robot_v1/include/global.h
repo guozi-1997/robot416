@@ -299,8 +299,8 @@ int timer_cnt;
 typedef struct Cordinate_PerLayer
 {
 	int Layer;
-	int Cordinate_X[10][256];
-	int Cordinate_Y[10][256];
+	float Cordinate_X[10][256];
+	float Cordinate_Y[10][256];
 	int Cordinate_Ang[10][256];
 } T_CorPerLayer;
 
