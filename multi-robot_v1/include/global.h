@@ -72,7 +72,7 @@ struct get_point
 	unsigned int b;
 } get_point1, get_point2, get_point3, get_point4;
 
-struct ekf
+/* struct ekf
 {
 	int i;
 
@@ -117,7 +117,7 @@ struct ekf
 	int distance1; //目标机器人航位推算的的移动距离（目标机器人的前进距离）
 
 	int count;
-} ekf111[4];
+} ekf111[4]; */
 struct ekf
 {
 	int i;
