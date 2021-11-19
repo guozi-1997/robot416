@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "MyMatrix.h"
+#include "matrix.h"
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -72,82 +73,49 @@ struct get_point
 	unsigned int b;
 } get_point1, get_point2, get_point3, get_point4;
 
-/* struct ekf
-{
-	int i;
-
-	MATRIX *H;
-	MATRIX *X;	//后验估计（最优修正值，最终要的就是这个）
-	MATRIX *X_; //先验估计
-	MATRIX *P;
-	MATRIX *P_;
-	MATRIX *K;
-	MATRIX *K_;
-	MATRIX *Z; //观测值
-	MATRIX *K__;
-	MATRIX *Q;
-	MATRIX *R;
-
-	REAL tht; //存本机与目标的电子罗盘航向角角度差？？？
-	REAL old_tht1;
-	REAL tht2; //存本机与目标的电子罗盘航向角角度差？？？
-
-	int tht3;
-	int tht4; //目标机器人航位推算的角度（目标的偏转角）
-	int tht5;
-
-	int tht6;
-	int tht7;
-	int tht8; //本机航位推算的角度（本机的偏转角）
-
-	int x1;
-	int x2; //本机航位推算的x值
-	int x3;
-	int y1;
-	int y2; //本机航位推算的y值
-	int y3;
-	int distance; //本机航位推算的移动距离（本机的前进距离）
-
-	int x4;
-	int x5; //目标机器人航位推算的x值
-	int x6;
-	int y4;
-	int y5; //目标机器人航位推算的y值
-	int y6;
-	int distance1; //目标机器人航位推算的的移动距离（目标机器人的前进距离）
-
-	int count;
-} ekf111[4]; */
 struct ekf
 {
 	int i;
-	Matrix A;
-	Matrix H;
-	Matrix X;  //后验估计（最优修正值，最终要的就是这个）
-	Matrix X_; //先验估计
-	Matrix P;
-	Matrix P_;
-	Matrix K;
-	Matrix K_;
-	Matrix Z; //观测值
-	Matrix K__;
-	Matrix Q;
-	Matrix R;
-	double Avalue[4];
-	double Hvalue[4];
-	double Xvalue[2];
-	double X_value[2];
-	double oldXvalue[2];
-	double Zvalue[2];
-	double Rvalue[4];
-	double Qvalue[4];
-	double tht; //存本机与目标的电子罗盘航向角角度差？？？
+	MATRIX *A;
+	MATRIX *H;	//增益矩阵
+	MATRIX *X;	//后验估计矩阵（最优修正值，最终要的就是这个）
+	MATRIX *X_; //先验估计矩阵
+	MATRIX *P;	//协方差矩阵
+	MATRIX *P_;
+	MATRIX *Z; //观测矩阵
+	MATRIX *preZ;
+	MATRIX *F;
+	MATRIX *F_;
+	MATRIX *Q;
+	MATRIX *R;
+	MATRIX *K; //卡尔曼增益系数矩阵
+	MATRIX *K_;
+	MATRIX *Eye;
+	REAL P_value[9];
+	REAL Avalue[3];
+	REAL Hvalue[9];
+	REAL Xvalue[3];
+	REAL X_value[3];
+	REAL oldXvalue[3];
+	REAL Zvalue[3];
+	REAL Rvalue[9];
+	REAL Qvalue[9];
+	REAL Fvalue[9];
+	double tht; //存本机与目标机的角度差
 	double old_tht1;
-	double tht2; //存本机与目标的电子罗盘航向角角度差？？？
+	double tht2; //存本机与目标机之间的角度差
 
 	int tht3;
 	int tht4; //目标机器人航位推算的角度（目标的偏转角）
 	int tht5;
+
+	int gyro;  //本机陀螺仪计算的偏转角
+	int gyro1; //
+	int gyro2;
+
+	int targetGyro; //目标机器人陀螺仪计算的偏转角
+	int targetGyro1;
+	int targetGyro2;
 
 	int tht6;
 	int tht7;
@@ -182,9 +150,10 @@ struct robot
 	int distance; //本机全景图像观测到目标机器人的观测距离
 	float dis_diff;
 	int number;
-	int dlta_a;	  //目标机器人（发过来的）角速度
-	int dlta_d;	  //目标机器人（发过来的）线速度
-	int Ture_Tht; //存本机与目标的电子罗盘航向角角度差？？？
+	int dlta_a; //目标机器人（发过来的）角速度
+	int dlta_d; //目标机器人（发过来的）线速度
+	int gyro;
+	double Ture_Tht; //存本机与目标的角度差
 } robot_temp[7], robot_end[7], robot_send[7], robot_rece[7], robot_ekf[7], robot_ekf2[7], robot_self[7];
 struct ekf_send
 {
@@ -205,6 +174,7 @@ PT_VideoBuf ptVideoBufCur_now;	//
 T_VideoBuf tVideoBuf_now;		//
 T_VideoBuf tFrameBuf_now;		//
 
+float gyroValue;
 int Ture_Tht;	 //电子罗盘航向角，磁北方向始（沿顺时针）到当前方向止的夹角（当罗盘水平旋转的时候，航向角在0—360度之间变化）
 int First_Angle; //记录本机器人初始的航向角角度
 int first_flag;	 //为配合 First_Angle 设置的标志位

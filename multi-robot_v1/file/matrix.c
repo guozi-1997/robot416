@@ -38,14 +38,15 @@
 /*******************************************************************************
 * (8)Function Define Section
 *******************************************************************************/
-
+//将矩阵中r行c列的数挑选出来
 REAL PickEleInMat(MATRIX *a, int r, int c)
 {
     REAL rst;
-    rst = a->p[(r - 1) * a->columns + (c - 1)];
+    rst = a->p[(c - 1) * a->columns + (r - 1)];
     return rst;
 }
 
+//按照行列打印整个矩阵
 VOID print_matrix(MATRIX *a, STRING string)
 {
     INDEX i, j;

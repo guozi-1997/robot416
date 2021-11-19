@@ -1,5 +1,6 @@
 #ifndef HEADER_MYMATRIX_H_
 #define HEADER_MYMATRIX_H_
+#include "common.h"
 /*
  * 问题记录：
  *　* 存在内存滥用的现象，因为每次创建矩阵都会申请一块新内存，并没有free掉
@@ -28,7 +29,7 @@ struct My_msg
 {
 	char flag;					   //"n"/"y"
 	char local_ip[15];			   // local_ip
-	int Ture_Tht;				   // Ture_Tht
+	int Ture_Tht;				   // 陀螺仪偏转角度
 	int dlta_d;					   // global.distanc,
 	int dlta_a;					   // global.angl,
 	int get_x;					   // robot_ekf[0].x,
@@ -81,7 +82,7 @@ char *substr(char src[], int start, int len);
 void assignMent(struct My_msg src, int count, int a, char *local_ip);
 //这个函数用于寻找虚拟机器人在本机局部坐标系下的距离和角度
 void math_Dis_Ang_204(int a);
-void InitEkf(int a);
+void InitEkf(int a, STACKS *S, ERROR_ID errorID);
 //秒级定时器
 void seconds_sleep(unsigned seconds);
 //毫秒级别定时器

@@ -1,4 +1,11 @@
 #include <io.h>
+
+/*
+要点提示:
+1. float和unsigned long具有相同的数据结构长度
+2. union据类型里的数据存放在相同的物理空间
+*/
+
 /* 电子罗盘串口初始化 */
 int set_opt(int fd, int nSpeed, int nBits, char nEvent, int nStop)
 {
@@ -171,9 +178,9 @@ int set_lidaropt(int fd, int nSpeed, int nBits, char nEvent, int nStop)
 
     newtio.c_cc[VTIME] = 150; //重要
     newtio.c_cc[VMIN] = 0;    //返回的最小值  重要
-    tcflush(fd, TCIFLUSH); // tcflush 函数用于丢弃队列中尚未传送或接收的数据
+    tcflush(fd, TCIFLUSH);    // tcflush 函数用于丢弃队列中尚未传送或接收的数据
 
-    if ((tcsetattr(fd, TCSANOW, &newtio)) != 0)  // tcsetattr 函数用于设置终端属性
+    if ((tcsetattr(fd, TCSANOW, &newtio)) != 0) // tcsetattr 函数用于设置终端属性
     {
         perror("com set error");
         return -1;

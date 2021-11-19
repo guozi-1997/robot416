@@ -5,8 +5,8 @@
 #include "MyMatrix.h"
 #include "matrix.h"
 
-int ekf_ts = 1000000;	  //你可以通过ekf_ts决定滤波频率
-int ControlFun_ts = 2000; //毫秒，你可以通过ControlFun_ts确定控制频率
+int ekf_ts = 1000000;	 //你可以通过ekf_ts决定滤波频率
+int ControlFun_ts = 200; //毫秒，你可以通过ControlFun_ts确定控制频率
 struct _globals
 {
 	int order_flag; //令牌
@@ -20,6 +20,12 @@ struct _globals
 	int outcnt;
 	int Ture_Tht;
 } global;
+
+typedef union
+{
+	float fdata;
+	unsigned char ldata[4];
+} FloatLongType;
 
 char mymsg_send_[100];
 char mymsg_recv_[100];
@@ -245,30 +251,34 @@ void ControlFun(void)
 	//------将脉冲值转换为角速度、线速度标准值-----//
 	//signal(SIGALRM, ControlFun);
 	//这两个值一直都是0
-	x0 = 0;
-	y0 = 0;
+
 	while (1)
 	{
+		milliseconds_sleep(ControlFun_ts); //这个定时器使用信号量做的，不需要考虑线程抢占问题
 		//printf("%d\n", RRT_Ok_Flag);
 		/************如果RRT路径规划好了之后，就赋值三个点****************/
 		if (isArrivedDirect_Flag)
 		{
+			printf("%d\n", __LINE__);
 			path_follow_flag = 1;
 			value_flag = 1;
 			isArrivedDirect_Flag = 0;
 		}
 		else
 			value_flag = 0;
-
-		/* 		if (w >= 1.0)
+		if (w >= 1.0)
 		{
 			w = 0.;
 			value_flag = 0;
-			RRT_Ok_Flag = 0;
+
+			frame_send.data[5] = 1; // 1底层坐标和角度清零
+			nbytes = write(can_fd, &frame_send, sizeof(frame_send));
+
 			path_follow_flag = 0;
 			dlta_a = 0;
-		} */
-
+			dlta_d = 0;
+			Arrived_ChildAim_Flag = 1;
+		}
 		if (value_flag)
 		{
 			/**********注意这里X代表横向，Y代表纵向*********************/
@@ -343,9 +353,7 @@ void ControlFun(void)
 				{
 					thta_measure = thta_measure;
 				}
-
 				thta_measure = thta_measure + 1 * pi / 2;
-
 				//***************以下算法实现部分**********************************//
 				//=====步骤1 :设定vc,计算期望路径一阶导，二阶导==//
 				//vc=0.1;				//v=vc=200mm/s
@@ -364,31 +372,6 @@ void ControlFun(void)
 
 				//**********圆轨迹**********************//
 
-				//**********直线轨迹y=-x  第二象限**********************//
-				/*
-		x_p = -w;
-		y_p = w ;
-
-		x_p_der = -1;
-		y_p_der = 1;
-		
-		x_p_derder = 0;
-		y_p_derder = 0;
-		*/
-				//**********直线轨迹y=-x  第二象限**********************//
-
-				//*****注意:跟踪直线有方向区别*********//
-				//**********直线轨迹y = x  第一象限**********************//
-
-				/* 		x_p = w;
-		y_p = w;
-
-		x_p_der = 1;
-		y_p_der = 1;
-
-		x_p_derder = 0;
-		y_p_derder = 0; */
-
 				//**********直线轨迹y = x  第一象限**********************//
 				/* 就是来跑直线的 */
 				/* ***********一次贝塞尔曲线*************************** */
@@ -400,33 +383,10 @@ void ControlFun(void)
 
 		x_p_derder = 0;
 		y_p_derder = 0; */
-
-				//********** 对称三阶贝塞尔曲线轨迹**********************//
-				/*
-		x_p = 2*w*w*w-3*w*w;
-		y_p = 2*w*w*w-3*w*w+3*w;
-
-		x_p_der =6*w*w-6*w;
-		y_p_der =6*w*w-6*w+3;
-		
-		x_p_derder =12*w-6;
-		y_p_derder =12*w-6;
-		*/
 				//********** 优化三阶贝塞尔曲线轨迹**********************//
-
-				/*
-		x_p = 2*w*w*w-3*w*w;
-		y_p = -0.25*w*w*w+0.9*w*w+1.35*w;
-
-		x_p_der =6*w*w-6*w;
-		y_p_der =-0.75*w*w+1.8*w+1.35;
-		
-		x_p_derder =12*w-6;
-		y_p_derder =-1.5*w+1.8;	
-		*/
 				x_p = pow((1 - w), 3) * x0 + 3 * pow((1 - w), 2) * w * x1 +
 					  3 * (1 - w) * w * w * x2 + pow(w, 3) * x3;
-				y_p = pow((1 - w), 3) * y0 + 3 * w * pow((1 - w), 2) * y1 +
+				y_p = pow((1 - w), 3) * y0 + 3 * pow((1 - w), 2) * w * y1 +
 					  3 * (1 - w) * w * w * y2 + pow(w, 3) * y3;
 				x_p_der = 3 * pow((1 - w), 2) * x0 + 3 * (1 - w) * (1 - 3 * w) * x1 +
 						  3 * (2 - 3 * w) * w * x2 + 3 * pow(w, 2) * x3;
@@ -436,31 +396,7 @@ void ControlFun(void)
 							 6 * (1 - 3 * w) * x2 + 6 * w * x3;
 				y_p_derder = 6 * (1 - w) * y0 - 6 * (2 - 3 * w) * y1 +
 							 6 * (1 - 3 * w) * y2 + 6 * w * y3;
-				//*************连续不停车运动第一段********************************//
-				//	if(!bezier_cnt)
-				{
-					/* 			x_p = 1.6 * w * w * w - 2.4 * w * w;
-			y_p = 1.8 * w * w * w - 2.7 * w * w + 2.7 * w;
 
-			x_p_der = 5.4 * w * w - 4.8 * w;
-			y_p_der = 5.4 * w * w - 5.4 * w + 2.7;
-
-			x_p_derder = 10.8 * w - 4.8;
-			y_p_derder = 10.8 * w - 5.4; */
-				}
-
-				//*************连续不停车运动第二段********************************//
-				//else
-				/*{
-			x_p = -2*w*w*w+3*w*w;
-			y_p = 0.3*w*w*w+0.3*w*w+1.2*w;
-
-			x_p_der =-6*w*w+6*w;
-			y_p_der =0.9*w*w+0.6*w+1.2;
-			
-			x_p_derder =-12*w+6;
-			y_p_derder =1.8*w+0.6;	
-		//}*/
 				//********计算不同路径参数对应的曲率、规划速度========//
 				curve_radio = fabs((x_p_der * y_p_derder - y_p_der * x_p_derder) / (pow(x_p_der * x_p_der + y_p_der * y_p_der, 1.5)));
 				//vc=pow(a_rad_max/curve_radio,0.5);
@@ -535,7 +471,7 @@ void ControlFun(void)
 				printf("w_der=%f\n", w_der * 57.296);
 				printf("error_s=%f cm\n", error_s * 100);
 				printf("error_e=%f cm\n", error_e * 100);
-				printf("w=%f\n", w);
+				printf("w_der=%f,w=%f\n", w_der, w);
 				printf("dlta_a=%d\n", dlta_a);
 				printf("dlta_d=%d\n", dlta_d);
 				printf("x_measure=%f cm\n", x_measure * 100);
@@ -557,32 +493,9 @@ void ControlFun(void)
 				dlta_a = 0;
 			}
 		}
-		/*
-	else
-	{
-		frame_send.data[1]=(int)dlta_d>>8;
-		frame_send.data[2]=(int)dlta_d;
-		frame_send.data[3]=(int)dlta_a>>8;
-		frame_send.data[4]=(int)dlta_a;
-		frame_send.data[5]=1;
-		nbytes =write(can_fd,&frame_send,sizeof(frame_send));	
-
-		addr_len=sizeof(addr);
-		len=0;
-
-		nbytes = recvfrom(s,&frame_rev,sizeof(struct can_frame),0,(struct sockaddr *)&addr,&len);
-
-		ifr.ifr_ifindex = addr.can_ifindex;
-		ioctl(s,SIOCGIFNAME,&ifr);
-
-		get_y=(-1)*(short)(frame_rev.data[0]*256+frame_rev.data[1]);	 //代表y偏移量前进为-
-		get_x=(-1)*(short)(frame_rev.data[2]*256+frame_rev.data[3]);	//代表x偏移量,左为正
-		get_tht=(short)(frame_rev.data[4]*256+frame_rev.data[5]);		//右转为正	
-	}
-	*/
-		milliseconds_sleep(ControlFun_ts);
 	}
 }
+
 int main(int argc, char **argv)
 {
 	struct timeval tv1;
@@ -598,10 +511,10 @@ int main(int argc, char **argv)
 	int usart_fd = 0;
 	//int can_fd=0;
 	//int file_fd=0;
-	unsigned char get_data[8];
+	unsigned char get_data[9];
 	int read_num = 0;
 	float sin_count = 0.001;
-
+	FloatLongType fl;
 	int lidar_stop = 0;
 	int reset_flag = 0;
 	int resetok_flag = 0;
@@ -644,7 +557,7 @@ int main(int argc, char **argv)
 	pthread_rwlock_init(&rwlock_lidar, NULL);	//初始化雷达的读写锁
 	global.order_flag = 0;
 	/* 创建子线程 */
-	res = pthread_create(&thrd_id1, &attr, Thread_Read, NULL); //------------lidar-----------------//
+	/* 	res = pthread_create(&thrd_id1, &attr, Thread_Read, NULL); //------------lidar-----------------//
 	if (res != 0)
 	{
 		printf("Create thread failed!");
@@ -656,7 +569,7 @@ int main(int argc, char **argv)
 	{
 		printf("Create thread failed!");
 		exit(res);
-	}
+	} */
 
 	pthread_create(&tTreadID3, NULL, socket_receive, NULL); //创建服务器（监听）线程
 	pthread_create(&tTreadID2, NULL, socket_send, NULL);	//创建客户端线程
@@ -676,13 +589,26 @@ int main(int argc, char **argv)
 	can_fd = can_init();	 //CAN用于控制stm32pwm电机
 
 	//close(file_fd);
-	//要读航向角，通过串口发送命令：68 04 00 03 07 给电子罗盘
-	ask_data[0] = 0x68;
-	ask_data[1] = 0x04;
-	ask_data[2] = 0x00;
-	ask_data[3] = 0x03;
-	ask_data[4] = 0x07;
 
+	ask_data[0] = 0x01;
+	ask_data[1] = 0x03;
+	ask_data[2] = 0x00;
+	ask_data[3] = 0x05;
+	ask_data[4] = 0x00;
+	ask_data[5] = 0x02;
+	ask_data[6] = 0xD4;
+	ask_data[7] = 0x0A; //陀螺仪Z轴数据申请
+
+	set_data[0] = 0x01;
+	set_data[1] = 0x06;
+	set_data[2] = 0x00;
+	set_data[3] = 0x13;
+	set_data[4] = 0x00;
+	//set_data[5]字节设置0x00代表绝对零点，0x01代表相对零点
+	/*这里的绝对零点指的是robot第一次开机所朝向的角度，如果不reboot，会保持*/
+	set_data[5] = 0x00;
+	set_data[6] = 0xB9;
+	set_data[7] = 0xCF; //相对零点设定
 	//---------------生成一个CAN报文---------------//
 	frame_send.can_id = 0x80cc0000;
 	frame_send.data[0] = 0xfb;
@@ -719,13 +645,13 @@ int main(int argc, char **argv)
 
 	if (setitimer(ITIMER_REAL, &tick, NULL) < 0)
 		printf("Set timer failed!\n"); */
-	res = pthread_create(&tTreadID5, NULL, ControlFun, NULL);
+	/* 	res = pthread_create(&tTreadID5, NULL, ControlFun, NULL);
 	if (res != 0)
 	{
 		printf("Create thread failed!");
 		exit(res);
-	}
-	//pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
+	} */
+	pthread_create(&tTreadID4, NULL, ekf_multi, NULL);
 	/*所有关于卡尔曼滤波的线程都从上面这行开始，如果你想终止卡尔曼的所有程序，请将上一行屏蔽，这对主程序不会有影响*/
 	char *local_ip = NULL;
 	local_ip = GetLocalIp();
@@ -752,6 +678,7 @@ int main(int argc, char **argv)
 		resetok_flag = 1;
 		resetok_flag++;
 	}
+	write(usart_fd, set_data, sizeof(ask_data));
 	while (1)
 	{
 		//---------------触摸屏---------------------
@@ -785,31 +712,19 @@ int main(int argc, char **argv)
 		/* 经底层航位推算（底层运动系统航位推算处理周期为 20ms），得到本机器人当前位姿 */
 		/* 在给定机器人初始位置的情况下，通过航位推算可以得到机器人下一时刻的相对于初始位置的坐标和朝向角 */
 
-		//---------------电子罗盘--------------------
+		//---------------陀螺仪--------------------
 		write(usart_fd, ask_data, sizeof(ask_data));
 		read_num = read(usart_fd, get_data, sizeof(get_data));
-		if (read_num > 0)
-		{
-			read_num = 0;
-			//get_data 数组存电子罗盘应答命令，	其中 get_data[4、5、6] 3个字节用于存放电子罗盘应答数据域
-			Ture_Tht = hextoshi(get_data[4], get_data[5], get_data[6]);
-			//printf("Ture_Tht = %d\n", Ture_Tht);
-			if (Ture_Tht >= 18000) //将 Ture_Tht 用 -180 到 +180 之间表示
-			{
-				Ture_Tht = Ture_Tht - 36000;
-			}
-			if (Ture_Tht < -18000)
-			{
-				Ture_Tht = Ture_Tht + 36000;
-			}
-			mymsg_send.Ture_Tht = Ture_Tht; //填充 mymsg_send 结构体信息
-			if (first_flag == 0 && get_data[7] != 0)
-			{
-				first_flag = 1;
-				First_Angle = hextoshi(get_data[4], get_data[5], get_data[6]);
-				printf("First_Angle = %d\n", First_Angle);
-			}
-		}
+		fl.ldata[3] = get_data[3];
+		fl.ldata[2] = get_data[4];
+		fl.ldata[1] = get_data[5];
+		fl.ldata[0] = get_data[6]; //如果不理解为什么这么写可以去了解一下大端字节序和小端字节序
+		gyroValue = fl.fdata;	   //共用体的巧妙使用
+		mymsg_send.Ture_Tht = fl.fdata * 1000;
+		Ture_Tht = mymsg_send.Ture_Tht;
+		//printf("gyroValue = %f\n", gyroValue);
+		//----------------电子罗盘-----------------------
+
 		//----------------风速仪-----------------------
 
 		//---------------无线网卡-----------------
@@ -927,21 +842,21 @@ int main(int argc, char **argv)
 			robot_end[i].angle = robot_temp[i].angle;
 			//robot_temp[i].angle 的值会在线程 VideoTreadFunction 中调用 scan 函数进行更新
 		}
-		/*	printf("robot_end[1].distance = %d\n", robot_end[1].distance);
-			printf("robot_end[1].angle = %d\n", robot_end[1].angle);
-			printf("robot_end[2].distance = %d\n", robot_end[2].distance);
-			printf("robot_end[2].angle = %d\n", robot_end[2].angle); */
+		/* printf("robot_end[1].distance = %d\n", robot_end[1].distance);
+		printf("robot_end[1].angle = %d\n", robot_end[1].angle);
+		printf("robot_end[2].distance = %d\n", robot_end[2].distance);
+		printf("robot_end[2].angle = %d\n", robot_end[2].angle); */
 
 		global.distanc = dlta_d;
 		global.angl = dlta_a;
-		robot_ekf[0].x = get_x;
-		robot_ekf[0].y = get_y;
+		robot_ekf[0].x = get_y;
+		robot_ekf[0].y = get_x;
 		robot_ekf[0].angle = get_tht; //经航位推算得到机器人的旋转角度
 
 		mymsg_send.dlta_d = dlta_d;	  //填充 mymsg_send 结构体信息
 		mymsg_send.dlta_a = dlta_a;	  //填充 mymsg_send 结构体信息
-		mymsg_send.get_x = get_x;	  //填充 mymsg_send 结构体信息
-		mymsg_send.get_y = get_y;	  //填充 mymsg_send 结构体信息
+		mymsg_send.get_x = get_y;	  //填充 mymsg_send 结构体信息
+		mymsg_send.get_y = get_x;	  //填充 mymsg_send 结构体信息
 		mymsg_send.get_tht = get_tht; //填充 mymsg_send 结构体信息
 
 		pthread_cond_broadcast(&global.db_update); // 发出一个数据更新的信号，通知发送通道来取数据
@@ -1495,7 +1410,7 @@ void *client_thread(void *arg)
 
 		iRecvLen = recv(p_net_rec->iSocketClient, mymsg_recv_, 100, 0);
 		memcpy(&mymsg_recv, mymsg_recv_, sizeof(mymsg_recv)); //把接收到的信息转换成结构体
-		/*printf("flag: %c\n", mymsg_recv.flag);
+															  /*printf("flag: %c\n", mymsg_recv.flag);
 		printf("local_ip: %s\n", mymsg_recv.local_ip);
 		printf("Ture_Tht: %d\n", mymsg_recv.Ture_Tht);
 		printf("dlta_d: %d\n", mymsg_recv.dlta_d);
@@ -1641,25 +1556,26 @@ void *socket_receive(void *povid)
 	这个线程主要是对采集的数据进行滤波，获取机器人之间相对准确的距离值和角度值
 	采用的是卡尔曼滤波
 */
+
 void *ekf_algorithm(void *arg)
 {
-	//int file_fd = 0;
 	int a = *(int *)arg;
 	int k = 0;
-	InitEkf(a);
+	ERROR_ID errorID = _ERROR_NO_ERROR;
+	REAL trace;
+	STACKS S;
+	init_stack(&S);
+	InitEkf(a, &S, errorID);
 	char *local_ip = NULL;
 	//file_fd = file_init(); //打开记录文件 ./record/x.txt
 	local_ip = GetLocalIp();
-	//init_sigaction();
-	//init_time();
 	int i;
 	struct timeval ekf_timeval;
+
 	while (1)
-	//get_time.NowMs = tv_limt.tv_sec * 1000 + tv_limt.tv_usec / 1000.;
 	{
 		gettimeofday(&ekf_timeval, NULL);
 		ekf_gettime.start_flag = ekf_timeval.tv_sec * 1000000 + ekf_timeval.tv_usec;
-
 		//pthread_cond_wait(&global.db_update, &global.db);
 		//pthread_rwlock_rdlock(&rwlock);
 		for (i = 1; i < 3; i++) //i取1，2
@@ -1667,166 +1583,138 @@ void *ekf_algorithm(void *arg)
 
 			robot_ekf[i].distance = robot_end[i].distance;
 			robot_ekf[i].angle = robot_end[i].angle;
+			//printf("angle1 = %d\n", robot_ekf[i].angle);
 		}
 		//pthread_rwlock_unlock(&rwlock);
 		//pthread_mutex_unlock(&global.db);
+
 		assignMent(ekfRecvBuf[a], robot_end[1].count, a, local_ip);
-		math_Dis_Ang_204(atoi(substr(local_ip, 12, 1)));
-		//本机观测目标的观测距离			//本机观测目标的观测角度
+		//                         本机观测目标的观测距离			//本机观测目标的观测角度
 		ekf[a].Zvalue[0] = (double)robot_ekf2[a].distance * cos(robot_ekf2[a].angle * pi / 1800.0);
 		ekf[a].Zvalue[1] = (double)robot_ekf2[a].distance * sin(robot_ekf2[a].angle * pi / 1800.0);
-		//得到其它机器人在本机坐标下的距离和角度（观测坐标）
+		ekf[a].Zvalue[2] = robot_ekf2[a].Ture_Tht; //两个机器人之间角度差
+		//ekf[a].Zvalue[2] = (double)robot_ekf2[a].angle;
 
-		if (PickInMat(ekf[a].X_, 1, 1) == 0. && PickInMat(ekf[a].X_, 2, 1) == 0.)
+		ekf[a].Z->p = ekf[a].Zvalue;
+
+		//printf("%d\n", __LINE__);
+		if (ekf[a].Xvalue[0] >= -0.00001 && ekf[a].Xvalue[0] <= 0.00001 &&
+			ekf[a].Xvalue[1] >= -0.00001 && ekf[a].Xvalue[1] <= 0.00001)
 		{
-			SetData_Matrix(ekf[a].X, ekf[a].Zvalue); //赋初值
+			printf("set value for X\n");
+			ekf[a].Xvalue[0] = ekf[a].Zvalue[0];
+			ekf[a].Xvalue[1] = ekf[a].Zvalue[1];
+			ekf[a].Xvalue[2] = ekf[a].Zvalue[2];
+			ekf[a].X->p = ekf[a].Xvalue; //赋初值
+			ekf[a].gyro2 = Ture_Tht;
+			ekf[a].targetGyro2 = robot_send[a].gyro;
 		}
-		//if (robot_end[a].number)
-		{
-			ekf[a].tht2 = robot_ekf2[a].Ture_Tht;
-			//printf("与%d号机器人之间的角度为 %f\n", robot_ekf2[a].number, ekf[a].tht2);
+		/**************************陀螺仪数据*******************************/
+		//向左转偏转角为正
+		ekf[a].gyro1 = Ture_Tht;
+		ekf[a].gyro = ekf[a].gyro1 - ekf[a].gyro2;
+		ekf[a].gyro2 = ekf[a].gyro1;
+		printf("本机的陀螺仪偏转角为 %d\n", ekf[a].gyro);
 
-			ekf[a].tht6 = robot_ekf[0].angle;
-			ekf[a].tht8 = -(ekf[a].tht6 - ekf[a].tht7);
-			ekf[a].tht7 = ekf[a].tht6;
-			//printf("本机的偏转角为 %d\n", ekf[a].tht8);
+		ekf[a].targetGyro1 = robot_send[a].gyro;
+		ekf[a].targetGyro = ekf[a].targetGyro1 - ekf[a].targetGyro2;
+		ekf[a].targetGyro2 = ekf[a].targetGyro1;
+		printf("目标机器人的陀螺仪偏转角为 %d\n", ekf[a].targetGyro);
+		//------------------------------------------------------------------
 
-			ekf[a].x1 = robot_ekf[0].x;
-			ekf[a].x2 = ekf[a].x1 - ekf[a].x3;
-			ekf[a].x3 = ekf[a].x1;
+		/**************************里程计数据*******************************/
+		//向左转偏转角为正
 
-			ekf[a].y1 = robot_ekf[0].y;
-			ekf[a].y2 = ekf[a].y1 - ekf[a].y3;
-			ekf[a].y3 = ekf[a].y1;
-			ekf[a].distance = (int)sqrt(pow(ekf[a].x2, 2) + pow(ekf[a].y2, 2));
-			//printf("本机的前进距离为 %d\n", ekf[a].distance);
+		ekf[a].tht6 = robot_ekf[0].angle;
+		ekf[a].tht8 = -(ekf[a].tht6 - ekf[a].tht7);
+		ekf[a].tht7 = ekf[a].tht6;
+		//printf("本机的里程计偏转角为 %d\n", ekf[a].tht8);
 
-			ekf[a].tht3 = robot_send[a].angle;
-			ekf[a].tht4 = -(ekf[a].tht3 - ekf[a].tht5);
-			ekf[a].tht5 = ekf[a].tht3;
-			//printf("%d号机器人的偏转角为%d\n", robot_ekf2[a].number, ekf[a].tht4);
-			ekf[a].x4 = robot_send[a].x;
-			ekf[a].x5 = ekf[a].x4 - ekf[a].x6;
-			ekf[a].x6 = ekf[a].x4;
-			ekf[a].y4 = robot_send[a].y;
-			ekf[a].y5 = ekf[a].y4 - ekf[a].y6;
-			ekf[a].y6 = ekf[a].y4;
-			ekf[a].distance1 = (int)sqrt(pow(ekf[a].x5, 2) + pow(ekf[a].y5, 2));
-			//printf("%d号机器人运行的距离为%d\n", robot_ekf2[a].number, ekf[a].distance1);
+		ekf[a].x1 = robot_ekf[0].x;
+		ekf[a].x2 = ekf[a].x1 - ekf[a].x3;
+		ekf[a].x3 = ekf[a].x1;
 
-			/* 要用double运算，因为matrix函数用的全是double类型，尽量减少不同类型之间的运算 */
-			// 这里应该用矩阵计算的，但是时间不够，后面应该整理并更改
-			/**********************预测 先验估计***************************/
-			ekf[a].X_value[0] = (PickInMat(ekf[a].X, 1, 1) + ekf[a].distance * 0.1 *
-																 sin(ekf[a].tht8 * pi / 1800)) *
-									cos(ekf[a].tht8 * pi / 1800) +
-								(PickInMat(ekf[a].X, 2, 1) - ekf[a].distance * 0.1 *
-																 cos(ekf[a].tht8 * pi / 1800)) *
-									sin(ekf[a].tht8 * pi / 1800) +
-								ekf[a].distance1 / 10 * cos((90 - ekf[a].tht2 + ekf[a].tht4 / 10) * pi / 180);
-			ekf[a].X_value[1] = (PickInMat(ekf[a].X, 2, 1) - ekf[a].distance * 0.1 *
-																 cos(ekf[a].tht8 * pi / 1800)) *
-									cos(ekf[a].tht8 * pi / 1800) -
-								(PickInMat(ekf[a].X, 1, 1) + ekf[a].distance * 0.1 *
-																 sin(ekf[a].tht8 * pi / 1800)) *
-									sin(ekf[a].tht8 * pi / 1800) +
-								ekf[a].distance1 / 10 * sin((90 - ekf[a].tht2 + ekf[a].tht4 / 10) * pi / 180);
-			/* 先验值ekf[a].X_value等于上一个最优估计值ekf[a].X+在需要时间内的航位推算值 */
-			SetData_Matrix(ekf[a].X_, ekf[a].X_value);
-			SetData_Matrix(ekf[a].Z, ekf[a].Zvalue);
-			/**************************************************************/
+		ekf[a].y1 = robot_ekf[0].y;
+		ekf[a].y2 = ekf[a].y1 - ekf[a].y3;
+		ekf[a].y3 = ekf[a].y1;
+		ekf[a].distance = (int)sqrt(pow(ekf[a].x2, 2) + pow(ekf[a].y2, 2));
+		//printf("本机的里程计前进距离为 %d\n", ekf[a].distance);
 
-			/*卡尔曼核心*/
-			/*这里在不断循环中创建了malloc申请了无数的内存空间，需要free释放*/
-			/*这里使用指针数组其实更好，但是为了方便理解就是用这种命名方式来计算*/
+		ekf[a].tht3 = robot_send[a].angle;
+		ekf[a].tht4 = -(ekf[a].tht3 - ekf[a].tht5);
+		ekf[a].tht5 = ekf[a].tht3;
+		//printf("%d号机器人的里程计偏转角为%d\n", robot_ekf2[a].number, ekf[a].tht4);
 
-			/**********************预测 先验误差协方差***************************/
-			Matrix Mult_Matrix_AP = Mult_Matrix(ekf[a].A, ekf[a].P);
-			Matrix Trans_Matrix_A = Trans_Matrix(ekf[a].A);
-			Matrix Mult_Matrix_APA = Mult_Matrix(Mult_Matrix_AP, Trans_Matrix_A);
-			Matrix AddorSub_Matrix_APAQ = AddorSub_Matrix(Mult_Matrix_APA, ekf[a].Q, 0); //ekf[a].P_
-			/**************************************************************/
+		ekf[a].x4 = robot_send[a].x;
+		ekf[a].x5 = ekf[a].x4 - ekf[a].x6;
+		ekf[a].x6 = ekf[a].x4;
+		ekf[a].y4 = robot_send[a].y;
+		ekf[a].y5 = ekf[a].y4 - ekf[a].y6;
+		ekf[a].y6 = ekf[a].y4;
+		ekf[a].distance1 = (int)sqrt(pow(ekf[a].x5, 2) + pow(ekf[a].y5, 2));
+		//printf("%d号机器人的里程计前进距离为 %d\n", robot_ekf2[a].number, ekf[a].distance);
+		//-----------------------------------------------------------------------
 
-			/**********************更新 卡尔曼增益***************************/
-			Matrix Trans_Matrix_H = Trans_Matrix(ekf[a].H);
-			Matrix Mult_Matrix_P_H = Mult_Matrix(AddorSub_Matrix_APAQ, Trans_Matrix_H); //ekf[a].K_
-			Matrix Mult_Matrix_HP_ = Mult_Matrix(ekf[a].H, AddorSub_Matrix_APAQ);
-			Matrix Mult_Matrix_HP_H = Mult_Matrix(Mult_Matrix_HP_, Trans_Matrix_H);
-			Matrix AddorSub_Matrix_HP_HR = AddorSub_Matrix(Mult_Matrix_HP_H, ekf[a].R, 0); //ekf[a].K__
-			Matrix EleTransInv_Matrix_K__ = EleTransInv_Matrix(AddorSub_Matrix_HP_HR);
-			Matrix Mult_Matrix_K_K__ = Mult_Matrix(Mult_Matrix_P_H, EleTransInv_Matrix_K__); //ekf[a].K
-			/**************************************************************/
+		//printf("%d号机器人运行的距离为%d\n", robot_ekf2[a].number, ekf[a].distance1);
+		ekf[a].X_value[0] = cos((ekf[a].tht8 + 900.) * pi / 1800) * (ekf[a].Xvalue[0] - ekf[a].distance * 0.1 * cos((ekf[a].tht8 + 900.) * pi / 1800)) +
+							sin((ekf[a].tht8 + 900.) * pi / 1800) * (ekf[a].Xvalue[1] - ekf[a].distance * 0.1 * sin((ekf[a].tht8 + 900.) * pi / 1800));
+		ekf[a].X_value[1] = -sin((ekf[a].tht8 + 900.) * pi / 1800) * (ekf[a].Xvalue[0] - ekf[a].distance * 0.1 * cos((ekf[a].tht8 + 900.) * pi / 1800)) +
+							cos((ekf[a].tht8 + 900.) * pi / 1800) * (ekf[a].Xvalue[1] - ekf[a].distance * 0.1 * sin((ekf[a].tht8 + 900.) * pi / 1800));
+		ekf[a].X_value[0] += ekf[a].distance1 * 0.1 * cos((900. - (ekf[a].Xvalue[2] + (ekf[a].tht8 - ekf[a].tht4) * 0.1)) * pi / 1800);
+		ekf[a].X_value[1] += ekf[a].distance1 * 0.1 * sin((900. - (ekf[a].Xvalue[2] + (ekf[a].tht8 - ekf[a].tht4) * 0.1)) * pi / 1800);
+		ekf[a].X_value[2] = ekf[a].Xvalue[2] + (ekf[a].tht8 - ekf[a].tht4) * 0.1;
+		//本次的先验角度值计算= 上次最优估计角度  加  本机器人      加 目标机器人之间新增加的角度
+		//printf("ekf[a].distance = %d,ekf[a].tht8 = %d\n", ekf[a].distance, ekf[a].tht8);
 
-			/**********************更新 后验估计***************************/
-			Matrix Mult_Matrix_HX_ = Mult_Matrix(ekf[a].H, ekf[a].X_);
-			Matrix AddorSub_Matrix_ZHX_ = AddorSub_Matrix(ekf[a].Z, Mult_Matrix_HX_, 1);
-			Matrix Mult_Matrix_KZHX_ = Mult_Matrix(Mult_Matrix_K_K__, AddorSub_Matrix_ZHX_);
-			Matrix AddorSub_Matrix_X_KZHX_ = AddorSub_Matrix(ekf[a].X_, Mult_Matrix_KZHX_, 0); //ekf[a].X
-			/**************************************************************/
+		/**************测试**********************/
+		printf("本机偏转角 =%d ,", ekf[a].tht8);
+		printf("Z_x=%f ,Z_y= %f\n", ekf[a].Zvalue[0], ekf[a].Zvalue[1]);
+		printf("X x=%f ,X y= %f\n", ekf[a].Xvalue[0], ekf[a].Xvalue[1]);
+		printf("robot[%d]X_X=%f, X_y=%f, X_3=%f\n", robot_ekf2[a].number,
+			   ekf[a].X_value[1], ekf[a].X_value[2]);
+		//————————————————————————————————————————————————————————————
 
-			/**********************更新 后验误差协方差***************************/
-			Matrix Mult_Matrix_KH = Mult_Matrix(Mult_Matrix_K_K__, ekf[a].H);
-			Matrix Mult_Matrix_KHP_ = Mult_Matrix(Mult_Matrix_KH, AddorSub_Matrix_APAQ);
-			Matrix AddorSub_Matrix_P_KHP_ = AddorSub_Matrix(AddorSub_Matrix_APAQ, Mult_Matrix_KHP_, 1); //ekf[a].P
-			/**************************************************************/
+		ekf[a].X_->p = ekf[a].X_value; //先验估计值
 
-			Free_Matrix(ekf[a].P_);
-			ekf[a].P_ = Copy_Matrix(AddorSub_Matrix_APAQ);
-			Free_Matrix(ekf[a].K_);
-			ekf[a].K_ = Copy_Matrix(Mult_Matrix_P_H);
-			Free_Matrix(ekf[a].K__);
-			ekf[a].K__ = Copy_Matrix(AddorSub_Matrix_HP_HR);
-			Free_Matrix(ekf[a].K);
-			ekf[a].K = Copy_Matrix(Mult_Matrix_K_K__);
-			Free_Matrix(ekf[a].X);
-			ekf[a].X = Copy_Matrix(AddorSub_Matrix_X_KZHX_);
-			Free_Matrix(ekf[a].P);
-			ekf[a].P = Copy_Matrix(AddorSub_Matrix_P_KHP_);
+		ekf[a].Fvalue[0] = cos((ekf[a].tht8 + 900.) * pi / 1800);
+		ekf[a].Fvalue[1] = sin((ekf[a].tht8 + 900.) * pi / 1800);
+		ekf[a].Fvalue[2] = -ekf[a].distance1 * 0.1 * sin((900. - ekf[a].Xvalue[2]) * pi / 1800);
+		ekf[a].Fvalue[3] = -sin((ekf[a].tht8 + 900.) * pi / 1800);
+		ekf[a].Fvalue[4] = cos((ekf[a].tht8 + 900.) * pi / 1800);
+		ekf[a].Fvalue[5] = ekf[a].distance1 * 0.1 * cos((900. - ekf[a].Xvalue[2]) * pi / 1800);
+		ekf[a].Fvalue[6] = 0;
+		ekf[a].Fvalue[7] = 0;
+		ekf[a].Fvalue[8] = 1;
+		ekf[a].F->p = ekf[a].Fvalue;
 
-			Free_Matrix(Mult_Matrix_AP);
-			Free_Matrix(Trans_Matrix_A);
-			Free_Matrix(Mult_Matrix_APA);
-			Free_Matrix(AddorSub_Matrix_APAQ);
-			Free_Matrix(Trans_Matrix_H);
-			Free_Matrix(Mult_Matrix_P_H);
-			Free_Matrix(Mult_Matrix_HP_);
-			Free_Matrix(Mult_Matrix_HP_H);
-			Free_Matrix(AddorSub_Matrix_HP_HR);
-			Free_Matrix(EleTransInv_Matrix_K__);
-			Free_Matrix(Mult_Matrix_K_K__);
-			Free_Matrix(Mult_Matrix_HX_);
-			Free_Matrix(AddorSub_Matrix_ZHX_);
-			Free_Matrix(Mult_Matrix_KZHX_);
-			Free_Matrix(AddorSub_Matrix_X_KZHX_);
-			Free_Matrix(Mult_Matrix_KH);
-			Free_Matrix(Mult_Matrix_KHP_);
-			Free_Matrix(AddorSub_Matrix_P_KHP_);
-			/*卡尔曼核心,核心代码，勿删*/
-			/*这里在不断循环中创建了malloc申请了无数的内存空间，需要free释放*/
-			// ekf[a].P_ = AddorSub_Matrix(Mult_Matrix(Mult_Matrix(ekf[a].A, ekf[a].P), Trans_Matrix(ekf[a].A)), ekf[a].Q, 0);
-			// ekf[a].K_ = Mult_Matrix(ekf[a].P_, Trans_Matrix(ekf[a].H));
-			// ekf[a].K__ = AddorSub_Matrix(Mult_Matrix(Mult_Matrix(ekf[a].H, ekf[a].P_), Trans_Matrix(ekf[a].H)), ekf[a].R, 0);
-			// ekf[a].K = Mult_Matrix(ekf[a].K_, EleTransInv_Matrix(ekf[a].K__));
-			// ekf[a].X = AddorSub_Matrix(ekf[a].X_, Mult_Matrix(ekf[a].K, AddorSub_Matrix(ekf[a].Z, Mult_Matrix(ekf[a].H, ekf[a].X_), 1)), 0);
-			// ekf[a].P = AddorSub_Matrix(ekf[a].P_, Mult_Matrix(Mult_Matrix(ekf[a].K, ekf[a].H), ekf[a].P_), 1);
-			/*打印*/
-			// ekf[a].Xvalue[0] = PickInMat(ekf[a].X, 1, 1);
-			// ekf[a].Xvalue[1] = PickInMat(ekf[a].X, 2, 1); /* 让先验值等于后验值 */
+		//printf("与%d号机器人之间的角度为 %f\n", robot_ekf2[a].number, ekf[a].Xvalue[2]);
+		/******************************************************/
 
-			//file_write_ekf(file_fd, robot_ekf2[a].number, (int)PickInMat(ekf[a].X, 1, 1), (int)PickInMat(ekf[a].X, 2, 1), (int)PickInMat(ekf[a].X_, 1, 1), (int)PickInMat(ekf[a].X_, 2, 1), (int)PickInMat(ekf[a].Z, 1, 1), (int)PickInMat(ekf[a].Z, 2, 1));
-			//打印目标机器人在本机坐标系下的x值									 //后验估计（最优估计值）		//先验估计					 //观测值
-			printf("robot[%d] X1 = %f  ,X_1 = %f  Z1 = %f\n", robot_ekf2[a].number, PickInMat(ekf[a].X, 1, 1), PickInMat(ekf[a].X_, 1, 1), PickInMat(ekf[a].Z, 1, 1));
-			//打印目标机器人在本机坐标系下的y值									 //后验估计（最优估计值）		//先验估计					 //观测值
-			printf("robot[%d] X2 = %f  ,X_2 = %f  Z2 = %f\n", robot_ekf2[a].number, PickInMat(ekf[a].X, 2, 1), PickInMat(ekf[a].X_, 2, 1), PickInMat(ekf[a].Z, 2, 1));
-			//robot_end[a].number = 0;
-			//robot_ekf[a].number = 1; //线程 robotRuning 中的标志位
-		}
-		printf("\n");
+		errorID = matrix_transpose(ekf[a].F, ekf[a].F_);
+		errorID = matrix_multiplication(ekf[a].F, ekf[a].P_, ekf[a].F);
+		errorID = matrix_multiplication(ekf[a].F, ekf[a].F_, ekf[a].P_);
+		errorID = matrix_add(ekf[a].P_, ekf[a].Q, ekf[a].P_); //协方差矩阵
+
+		errorID = matrix_multiplication(ekf[a].H, ekf[a].X_, ekf[a].preZ); //观测预测值
+
+		errorID = matrix_multiplication(ekf[a].P_, ekf[a].H, ekf[a].K);
+		errorID = matrix_multiplication(ekf[a].H, ekf[a].P_, ekf[a].K_);
+		errorID = matrix_multiplication(ekf[a].K_, ekf[a].H, ekf[a].K_);
+		errorID = matrix_add(ekf[a].K_, ekf[a].R, ekf[a].K_);
+		errorID = matrix_inverse(ekf[a].K_, ekf[a].K_);
+		errorID = matrix_multiplication(ekf[a].K, ekf[a].K_, ekf[a].K); //协方差矩阵K
+
+		errorID = matrix_subtraction(ekf[a].Z, ekf[a].preZ, ekf[a].Z);
+		errorID = matrix_multiplication(ekf[a].K, ekf[a].Z, ekf[a].Z);
+		errorID = matrix_add(ekf[a].preZ, ekf[a].Z, ekf[a].X);
+
+		errorID = matrix_multiplication(ekf[a].Eye, ekf[a].K, ekf[a].P);
+		errorID = matrix_multiplication(ekf[a].P, ekf[a].P_, ekf[a].P);
+		//printf("%d\n", errorID);
 		printf("\n");
 		gettimeofday(&ekf_timeval, NULL);
 		ekf_gettime.time_flag = ekf_timeval.tv_sec * 1000000 + ekf_timeval.tv_usec;
 		ekf_gettime.PreMs = ekf_gettime.time_flag - ekf_gettime.start_flag;
-		//printf("Time = %f ms\n", ekf_gettime.PreMs);
 		if (ekf_gettime.PreMs >= ekf_ts)
 		{
 			microseconds_sleep(1);
@@ -1836,68 +1724,7 @@ void *ekf_algorithm(void *arg)
 			microseconds_sleep(ekf_ts - ekf_gettime.PreMs); //微调
 		}
 	}
-	return arg;
 }
-
-/* void *ekf_algorithm1(void *arg)
-{
-	int a = *(int *)arg;
-	int k = 0;
-	ERROR_ID errorID = _ERROR_NO_ERROR;
-	REAL trace;
-	STACKS S;
-
-	init_stack(&S);
-	MATRIX *A = NULL;
-	MATRIX *H = NULL;
-	MATRIX *X;	//后验估计（最优修正值，最终要的就是这个）
-	MATRIX *X_; //先验估计
-	MATRIX *P;
-	MATRIX *Z;
-	A = creat_matrix(3, 3, &errorID, &S);
-	H = creat_eye_matrix(3, &errorID, &S);
-	Z = creat_matrix(3, 1, &errorID, &S);
-	X_ = creat_matrix(3, 1, &errorID, &S);
-	REAL Avalue[9];
-	REAL Hvalue[9];
-	REAL Xvalue[3];
-	REAL X_value[3];
-	REAL oldXvalue[3];
-	REAL Zvalue[3];
-	REAL Rvalue[9];
-	REAL Qvalue[9];
-	char *local_ip = NULL;
-	//file_fd = file_init(); //打开记录文件 ./record/x.txt
-	local_ip = GetLocalIp();
-	int i;
-	struct timeval ekf_timeval;
-	while (1)
-	{
-		gettimeofday(&ekf_timeval, NULL);
-		ekf_gettime.start_flag = ekf_timeval.tv_sec * 1000000 + ekf_timeval.tv_usec;
-		//pthread_cond_wait(&global.db_update, &global.db);
-		//pthread_rwlock_rdlock(&rwlock);
-		for (i = 1; i < 3; i++) //i取1，2
-		{
-
-			robot_ekf[i].distance = robot_end[i].distance;
-			robot_ekf[i].angle = robot_end[i].angle;
-		}
-		//pthread_rwlock_unlock(&rwlock);
-		//pthread_mutex_unlock(&global.db);
-
-		assignMent(ekfRecvBuf[a], robot_end[1].count, a, local_ip);
-
-		Zvalue[0] = (double)robot_ekf[a].distance * cos(robot_ekf[a].angle * pi / 1800.0);
-		Zvalue[1] = (double)robot_ekf[a].distance * sin(robot_ekf[a].angle * pi / 1800.0);
-		Zvalue[2] = (double)robot_ekf[a].angle;
-		Z->p = Zvalue;
-		if (PickEleInMat(X_, 1, 1) == 0. && PickInMat(X_, 2, 1) == 0.)
-		{
-			X_->p = Z->p; //赋初值
-		}
-	}
-} */
 
 int robotRuning()
 {
@@ -1924,7 +1751,7 @@ int robotRuning()
 }
 int robotRuning1()
 {
-	float sin_count = 0.001;
+	/* float sin_count = 0.001;
 	int time_count = 0;
 	while (1)
 	{
@@ -1975,7 +1802,30 @@ int robotRuning1()
 
 			milliseconds_sleep(100);
 		}
-	}
+	} */
+	//dlta_a = 100;
+	dlta_d = 100;
+
+	pthread_rwlock_rdlock(&rwlock);
+	frame_send.data[1] = (int)dlta_d >> 8;
+	frame_send.data[2] = (int)dlta_d;
+	frame_send.data[3] = (int)dlta_a >> 8;
+	frame_send.data[4] = (int)dlta_a;
+	frame_send.data[5] = 0;
+	nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+	pthread_rwlock_unlock(&rwlock);
+	seconds_sleep(5);
+	dlta_a = 0;
+	dlta_d = 0;
+
+	pthread_rwlock_rdlock(&rwlock);
+	frame_send.data[1] = (int)dlta_d >> 8;
+	frame_send.data[2] = (int)dlta_d;
+	frame_send.data[3] = (int)dlta_a >> 8;
+	frame_send.data[4] = (int)dlta_a;
+	frame_send.data[5] = 0;
+	nbytes = write(can_fd, &frame_send, sizeof(frame_send)); //通过CAN控制stm32电机，令机器人移动
+	pthread_rwlock_unlock(&rwlock);
 	return 0;
 }
 
@@ -1986,8 +1836,8 @@ void *ekf_multi(void *arg)
 	local_ip = GetLocalIp();
 	sleep(20);
 
-	//pthread_t robotRun1;
-	//pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
+	// pthread_t robotRun1;
+	// pthread_create(&robotRun1, NULL, robotRuning1, NULL); //该线程用于控制机器人的运动
 	//}
 	//pthread_t robotRun;
 	//	pthread_create(&robotRun, NULL, robotRuning1, NULL); //该线程用于记录

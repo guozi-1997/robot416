@@ -7,9 +7,10 @@
 #define Layer 4          //静态搜索树层数为定值
 #define ObsDeltaAng 150  //障碍物与搜索路径角度差阈值
 #define ExpandDis 200    //膨胀距离mm
-#define Step 40          //步长,单位pix
+#define Step 30          //步长,单位pix
 #define StepDistance 300 //步长，单位mm
 #define Display_Flag 1   //0显示所有搜索路径，1显示规划后的可行路径
+int get_r(int rad);
 float dis_50 = 67.0;
 int randangle[6][100][10] = {0};
 int childrandcnt = 0;
@@ -19,7 +20,7 @@ int planning_cnt = 0;
 RandRito = 1;
 int time_srand = 0;
 int release_num[10] = {0};
-int Node_PerNum = 3; //所在层的节点数
+int Node_PerNum = 27; //所在层的节点数
 
 int Circle_num = 0; //产生随机数的循环次数
 
@@ -136,11 +137,11 @@ int goalListLeader(struct Distance *dis, int i, int j, int p)
     //printf("dis->angle_A[0] = %f\n", dis->angle_A[0]);
 
     /*******heading评估函数**********/
-    dis->angle_A[0] = acos(dis->angle_A[0]) * 180 / pi;
+    /*     dis->angle_A[0] = acos(dis->angle_A[0]) * 180 / pi;
     dis->angle_A[1] = acos(dis->angle_A[1]) * 180 / pi;
     //heading评估函数第一次评分
     OkPath.evaluation[j] = -dis->angle_A[1] * 5;
-    OkPath.evaluation[i] = -dis->angle_A[0] * 5;
+    OkPath.evaluation[i] = -dis->angle_A[0] * 5; */
     /**************************************************************/
 
     /********gaollist代价函数************/
@@ -149,7 +150,7 @@ int goalListLeader(struct Distance *dis, int i, int j, int p)
     //gaollist评估函数第二次评分
     //只有距离目标距离值小于2m的时候才会开启goallist函数
     dis->finalaim = pow((dis->finalaim_x * dis->finalaim_x + dis->finalaim_y * dis->finalaim_y), 0.5);
-    if (dis->finalaim <= 200)
+    // if (dis->finalaim <= 200)
     {
         OkPath.evaluation[i] = OkPath.evaluation[i] - dis->cost_i / 10 * 5;
         OkPath.evaluation[j] = OkPath.evaluation[j] - dis->cost_j / 10 * 5;
@@ -181,50 +182,6 @@ int goalListLeader(struct Distance *dis, int i, int j, int p)
     return 0;
 }
 
-int get_r(int rad)
-{
-
-    if (rad < 20)
-    {
-        return rad / 4 + 5;
-    }
-    if (rad >= 20 && rad < 30)
-    {
-        return rad / 4 + 4;
-    }
-    if (rad >= 30 && rad < 40)
-    {
-        return rad / 4 + 3;
-    }
-    if (rad >= 40 && rad < 50)
-    {
-        return rad / 4 + 2;
-    }
-    if (rad >= 50 && rad < 60)
-    {
-        return rad / 4 + 1;
-    }
-    if (rad >= 60 && rad < 70)
-    {
-        return rad / 4 + 0;
-    }
-    if (rad >= 70 && rad < 80)
-    {
-        return rad / 4 - 1;
-    }
-    if (rad >= 80 && rad < 90)
-    {
-        return rad / 4 - 2;
-    }
-    if (rad >= 90 && rad < 100)
-    {
-        return rad / 4 - 3;
-    }
-    if (rad >= 100)
-    {
-        return rad / 4 - 4;
-    }
-}
 //=========================================================================
 void min_cir(unsigned char *addr)
 {
@@ -548,93 +505,6 @@ void min_cir(unsigned char *addr)
         //	printf("LidarEdgeDistance[%d]=%d\n",i,LidarEdgeDistance[i]);//厘米
     }
     //---判断是否可行-------
-    OkPathCnt = 0;
-    memset(OkPathDistPix, 0, 10);
-    memset(OkPathAngle, 0, 10);
-    memset(OkPathDistance, 0, 10);
-
-    PathWidth = 0.0;
-
-    //-----------------------第二层筛选判断是否为可行路径------
-    if (LidarEdgeCnt > 1)
-    {
-        for (i = 0; i < LidarEdgeCnt - 1; i++)
-        {
-            if (i % 2 == 0)
-            {
-                theta = abs(LidarEdgeAngle[i] - LidarEdgeAngle[i + 1]) * 3.14 / 1800;
-                /*******如果障碍物之间的空隙超过40像素值那就说明这个区间可以让机器人通过********************/
-                if (LidarEdgeDistance[i] * LidarEdgeDistance[i] + LidarEdgeDistance[i + 1] * LidarEdgeDistance[i + 1] - 2 * LidarEdgeDistance[i] * LidarEdgeDistance[i + 1] * cos(theta) > 1600.0)
-                {
-                    OkPathAngle[OkPathCnt] = LidarEdgeAngle[i];
-                    OkPathDistPix[OkPathCnt] = LidarEdgeDistPix[i];
-                    OkPathDistance[OkPathCnt] = LidarEdgeDistance[i];
-                    OkPathCnt++;
-
-                    OkPathAngle[OkPathCnt] = LidarEdgeAngle[i + 1];
-                    OkPathDistPix[OkPathCnt] = LidarEdgeDistPix[i + 1];
-                    OkPathDistance[OkPathCnt] = LidarEdgeDistance[i + 1];
-                    OkPathCnt++;
-
-                    PathWidth = LidarEdgeDistance[i] * LidarEdgeDistance[i] + LidarEdgeDistance[i + 1] * LidarEdgeDistance[i + 1] - 2 * LidarEdgeDistance[i] * LidarEdgeDistance[i + 1] * cos(theta);
-                    PathWidth = pow(PathWidth, 0.5);
-
-                    //	printf("PathWidth=%6.2f\n",PathWidth);
-                    //	printf("path theta=%6.2f\n",theta*1800/3.14);
-                    //	printf("path width=%6.2f\n",LidarEdgeDistance[i]*LidarEdgeDistance[i]+LidarEdgeDistance[i+1]*LidarEdgeDistance[i+1]-2*LidarEdgeDistance[i]*LidarEdgeDistance[i+1]*cos(theta));
-                    //	printf("\n");
-                }
-                //printf("theta=%f\n",theta*1800/3.14);
-                //printf("path width=%f\n",LidarEdgeDistance[i]*LidarEdgeDistance[i]+LidarEdgeDistance[i+1]*LidarEdgeDistance[i+1]-2*LidarEdgeDistance[i]*LidarEdgeDistance[i+1]*cos(theta));
-            }
-        }
-    }
-    //-----------------取筛选后可行路径的中点---------------------
-    if (OkPathCnt)
-    {
-        for (i = 0; i < OkPathCnt - 1; i++)
-        {
-            if (i % 2 == 0)
-            {
-                LidarOkPathMidAng[LidarOkPathMidCnt] = (OkPathAngle[i] + OkPathAngle[i + 1]) / 2;
-                LidarOkPathMidPix[LidarOkPathMidCnt] = (OkPathDistPix[i] + OkPathDistPix[i + 1]) / 2;
-                LidarOkPathMidCnt++;
-            }
-            //printf("LidarOkPathMidAng[%d]=%d\n",i,LidarOkPathMidAng[i]);
-            //printf("LidarOkPathMidPix[%d]=%d\n",i,LidarOkPathMidPix[i]);
-            //printf("\n");
-        }
-    }
-
-    //-----lidar扫描的可行路径中点按照与目标物的偏差排序------
-    if (LidarOkPathMidCnt)
-    {
-        int tmplidarang = 0;
-        int tmplidarpix = 0;
-        if (LidarOkPathMidCnt > 1)
-        {
-            for (i = 0; i < LidarOkPathMidCnt - 1; i++)
-            {
-                for (j = i + 1; j < LidarOkPathMidCnt; j++)
-                {
-                    if (abs(LidarOkPathMidAng[i] - robot_temp[1].angle) > abs(LidarOkPathMidAng[j] - robot_temp[1].angle))
-                    {
-                        tmplidarang = LidarOkPathMidAng[i];
-                        LidarOkPathMidAng[i] = LidarOkPathMidAng[j];
-                        LidarOkPathMidAng[j] = tmplidarang;
-
-                        tmplidarpix = LidarOkPathMidPix[i];
-                        LidarOkPathMidPix[i] = LidarOkPathMidPix[j];
-                        LidarOkPathMidPix[j] = tmplidarpix;
-                    }
-                }
-            }
-        }
-
-        //	printf("LidarOkPathMidAng[0]=%d\n",LidarOkPathMidAng[0]);
-        //	printf("LidarOkPathMidPix[0]=%d\n",LidarOkPathMidPix[0]);
-        //	printf("\n");
-    }
 
     //-------判断机器人到总目标的直线路径上有无障碍物---
 
@@ -809,7 +679,7 @@ void min_cir(unsigned char *addr)
 
                     for (n = 0; n < 4; n++)
                     {
-                        //------每个步长终点相对于起点的位姿--------
+                        //------每个步长终点相对于起点的角度--------
                         tmp_path4_new_ang[n] = acos(tmp_path4_dist_x[n] / tmp_path4_dist[n]) * 1800 / 3.14;
                     }
                     //tmp_dx3代表x的总长度，tmp_dy3代表y的总长度
@@ -1022,247 +892,10 @@ void min_cir(unsigned char *addr)
             isOkPath = 0;
             Arrived_ChildAim_Flag = 0;
         }
-
-        //---第五层判断，遇到不可行分支，该分支------------
-        //---------停止搜索，之后所有搜索树置0------------
-
-        if (NumPathPlanningCnt > 4)
-        {
-            int tmpangle4 = 0;
-            int tmppix4 = 0;
-            float tmp_dx4 = 0.0;
-            float tmp_dy4 = 0.0;
-
-            for (m = 0; m < branch_num * branch_num * branch_num * branch_num; m++)
-            {
-                for (i = 0; i < branch_num; i++) //第四层的搜索树
-                {
-                    tmp_dy4 = pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / (branch_num * branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[2][m / branch_num * branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[4][m][i] * 3.14 / 1800);
-                    tmp_dx4 = pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / (branch_num * branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[2][m / branch_num * branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[4][m][i] * 3.14 / 1800);
-                    tmpangle4 = atan(tmp_dy4 / tmp_dx4) * 1800 / 3.14;
-                    if (tmpangle4 < 0)
-                    {
-                        tmpangle4 = tmpangle4 + 1800;
-                    }
-                    //	printf("tmp_dy3=%6.2f\n",tmp_dy3);
-                    //	printf("tmp_dx3=%6.2f\n",tmp_dx3);
-
-                    tmppix4 = tmp_dy4 * tmp_dy4 + tmp_dx4 * tmp_dx4;
-                    tmppix4 = pow(tmppix4, 0.5);
-
-                    //	printf("tmpangle3=%d\n",tmpangle3);
-                    //	printf("tmppix3=%d\n",tmppix3);
-                    //	printf("\n");
-                    for (j = 0; j < FilterCount; j++)
-                    {
-                        if (abs(FilterLidarAng[j] - tmpangle4) < ObsDeltaAng) //先判断障碍物角度
-                        {
-                            if (FilterLidarDistPix[j] < tmppix4)
-                            {
-                                for (l = 4; l < NumPathPlanningCnt; l++)
-                                {
-                                    PathPlanningAng[l][m][i] = 0;
-                                }
-                                obs_search_cnt++;
-                            }
-                        }
-                    }
-                    if (PathPlanningAng[4][m][i] && 5 == Layer) //角度不为0 表示满足要求的
-                    {
-                        OkPath.Layer_Num = 4;
-                        OkPath.Ok_Angle[OkPath.Ok_Cnt_PerLayer] = tmpangle4;
-                        OkPath.Ok_Pix[OkPath.Ok_Cnt_PerLayer] = tmppix4;
-                        OkPath.Ok_Cnt_PerLayer++;
-                    }
-                }
-            }
-            if (5 == Layer)
-            {
-                int tmp5_angle = 0;
-                int tmp5_pix = 0;
-
-                // ------将5层搜索树可行路径与目标角度差值排序--------
-                for (i = 0; i < OkPath.Ok_Cnt_PerLayer - 1; i++)
-                {
-                    for (j = i + 1; j < OkPath.Ok_Cnt_PerLayer; j++)
-                    {
-                        if (abs(OkPath.Ok_Angle[i] - robot_temp[1].angle) > abs(OkPath.Ok_Angle[j] - robot_temp[1].angle))
-                        {
-                            tmp5_angle = OkPath.Ok_Angle[i];
-                            OkPath.Ok_Angle[i] = OkPath.Ok_Angle[j];
-                            OkPath.Ok_Angle[j] = tmp5_angle;
-
-                            tmp5_pix = OkPath.Ok_Pix[i];
-                            OkPath.Ok_Pix[i] = OkPath.Ok_Pix[j];
-                            OkPath.Ok_Pix[j] = tmp5_pix;
-                        }
-                    }
-                }
-                //	printf("robot_temp[1].angle=%d\n",robot_temp[1].angle);
-                //	printf("OkPath.Ok_Angle[0]=%d\n",OkPath.Ok_Angle[0]);
-                //	printf("OkPath.Ok_Pix[0]=%d\n",OkPath.Ok_Pix[0]);
-                //	printf("\n");
-
-                Best_OkPath.Best_Layer_Num = 5;
-                for (i = 0; i < OkPath.Ok_Cnt_PerLayer; i++)
-                {
-                    if (OkPath.Ok_Pix[i] > tmpminpix)
-                    {
-                        Best_OkPath.Best_Ok_Angle[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Angle[i];
-                        Best_OkPath.Best_Ok_Pix[Best_OkPath.Best_Ok_Cnt] = OkPath.Ok_Pix[i];
-                        Best_OkPath.Best_Ok_Cnt++;
-                        i = OkPath.Ok_Cnt_PerLayer - 1;
-                    }
-                }
-                printf("Best_OkPath.Best_Ok_Pix=%d\n", Best_OkPath.Best_Ok_Pix[0]);
-                printf("tmpminpix=%d\n", tmpminpix);
-                //printf("Best_OkPath.Best_Ok_Cnt=%d\n",Best_OkPath.Best_Ok_Cnt);
-                //--------规划层数为5时画出满足的RRT路径-------------------------------
-                for (i = 0; i < Best_OkPath.Best_Ok_Cnt; i++)
-                {
-                    r = Best_OkPath.Best_Ok_Pix[i];
-                    for (j = 0; j < r; j++)
-                    {
-                        y = j * sin(Best_OkPath.Best_Ok_Angle[i] * 3.14 / 1800);
-                        x = j * cos(Best_OkPath.Best_Ok_Angle[i] * 3.14 / 1800);
-
-                        addr[cell(x, y, 0)] = 0;
-                        addr[cell(x, y, 1)] = 0;
-                        addr[cell(x, y, 2)] = 255;
-
-                        //	printf("j=%d\n,y=%d,x=%d,r=%d",j,y,x,r);
-                        //	printf("Best_OkPath.Best_Ok_Cnt=%d\n",Best_OkPath.Best_Ok_Cnt);
-                        //	printf("...................\n");
-                    }
-                }
-            }
-        }
 #endif
 
         //	printf("obs_search_cnt=%d\n",obs_search_cnt);
         obs_search_cnt = 0;
-
-        //-------------------显示RRT随机路径-----------------------------
-        if (0 == Display_Flag)
-        {
-            switch (NumPathPlanningCnt)
-            {
-            case 5:
-                p = branch_num * branch_num * branch_num * branch_num;
-                q = branch_num * branch_num * branch_num;
-                l = branch_num * branch_num;
-                for (m = 0; m < p; m++)
-                {
-                    for (i = 0; i < branch_num; i++)
-                    {
-                        for (j = pix[3]; j < pix[4]; j++)
-                        {
-                            y = (j - pix[3]) * sin((PathPlanningAng[4][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[2][m / l][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / q][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                            x = (j - pix[3]) * cos((PathPlanningAng[4][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[3][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[2][m / l][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / q][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
-
-                            addr[cell(x, y, 0)] = 255;
-                            addr[cell(x, y, 1)] = 0;
-                            addr[cell(x, y, 2)] = 0;
-                        }
-                    }
-                }
-            case 4:
-                for (m = 0; m < branch_num * branch_num * branch_num; m++)
-                {
-                    for (i = 0; i < branch_num; i++)
-                    {
-                        Cord_PerLayer.Cordinate_X[3][i] = stepdis[0] * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + cos((PathPlanningAng[2][m / branch_num][i]) * 3.14 / 1800) + cos((PathPlanningAng[3][m][i]) * 3.14 / 1800));
-                        Cord_PerLayer.Cordinate_Y[3][i] = stepdis[0] * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + sin((PathPlanningAng[2][m / branch_num][i]) * 3.14 / 1800) + sin((PathPlanningAng[3][m][i]) * 3.14 / 1800));
-                        Cord_PerLayer.Cordinate_Ang[3][i] = PathPlanningAng[3][m][i];
-
-                        for (j = pix[2]; j < pix[3]; j++)
-                        {
-                            y = (j - pix[2]) * sin((PathPlanningAng[3][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[2][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                            x = (j - pix[2]) * cos((PathPlanningAng[3][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[2][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / (branch_num * branch_num)][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
-
-                            addr[cell(x, y, 0)] = 255;
-                            addr[cell(x, y, 1)] = 255;
-                            addr[cell(x, y, 2)] = 0;
-                        }
-                    }
-                }
-
-            case 3:
-                for (m = 0; m < branch_num * branch_num; m++)
-                {
-                    for (i = 0; i < branch_num; i++) //选取根节点
-                    {
-                        Cord_PerLayer.Cordinate_X[2][i] = stepdis[0] * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos((PathPlanningAng[1][m / branch_num][i]) * 3.14 / 1800) + cos((PathPlanningAng[2][m][i]) * 3.14 / 1800));
-                        Cord_PerLayer.Cordinate_Y[2][i] = stepdis[0] * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m / branch_num][i] * 3.14 / 1800) + sin((PathPlanningAng[2][m][i]) * 3.14 / 1800));
-                        Cord_PerLayer.Cordinate_Ang[2][i] = PathPlanningAng[2][m][i];
-
-                        for (j = pix[1]; j < pix[2]; j++) //绘制直线
-                        {
-                            y = (j - pix[1]) * sin((PathPlanningAng[2][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[1][m / branch_num][i] * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                            x = (j - pix[1]) * cos((PathPlanningAng[2][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[1][m / branch_num][i] * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
-
-                            addr[cell(x, y, 0)] = 255;
-                            addr[cell(x, y, 1)] = 0;
-                            addr[cell(x, y, 2)] = 0;
-                        }
-                    }
-                }
-                //break;
-            case 2:
-                for (m = 0; m < branch_num * 1; m++)
-                {
-                    for (i = 0; i < branch_num; i++) //第二层
-                    {
-                        Cord_PerLayer.Cordinate_X[1][i] = stepdis[0] * (cos(PathPlanningAng[0][0][i] * 3.14 / 1800) + cos((PathPlanningAng[1][m][i]) * 3.14 / 1800));
-                        Cord_PerLayer.Cordinate_Y[1][i] = stepdis[0] * (sin(PathPlanningAng[0][0][i] * 3.14 / 1800) + sin(PathPlanningAng[1][m][i] * 3.14 / 1800));
-                        Cord_PerLayer.Cordinate_Ang[1][i] = PathPlanningAng[1][m][i];
-
-                        for (j = 0; j < pix[1]; j++)
-                        {
-                            y = (j)*sin((PathPlanningAng[1][m][i]) * 3.14 / 1800) + pix[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                            x = (j)*cos((PathPlanningAng[1][m][i]) * 3.14 / 1800) + pix[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
-
-                            addr[cell(x, y, 0)] = 0;
-                            addr[cell(x, y, 1)] = 255;
-                            addr[cell(x, y, 2)] = 0;
-                        }
-                    }
-                }
-                //break;
-            case 1:
-
-                for (i = 0; i < branch_num; i++)
-                {
-
-                    if ((stepdis[0] > 150) && (stepdis[0] < (618 + 300)))
-                    {
-                        pix[0] = 17.6132 * pow(0.0099 * ((stepdis[0] - 300)), 0.8712) + 41;
-                    }
-
-                    Cord_PerLayer.Cordinate_X[0][i] = stepdis[0] * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                    Cord_PerLayer.Cordinate_Y[0][i] = stepdis[0] * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                    Cord_PerLayer.Cordinate_Ang[0][i] = PathPlanningAng[0][0][i];
-
-                    //	printf("Cord_PerLayer.Cordinate_X[0][%d]=%d\n",i,Cord_PerLayer.Cordinate_X[0][i]);
-                    //	printf("Cord_PerLayer.Cordinate_Y[0][%d]=%d\n",i,Cord_PerLayer.Cordinate_Y[0][i]);
-                    //	printf("\n");
-
-                    for (j = 0; j < pix[0]; j++)
-                    {
-                        y = j * sin(PathPlanningAng[0][0][i] * 3.14 / 1800);
-                        x = j * cos(PathPlanningAng[0][0][i] * 3.14 / 1800);
-
-                        addr[cell(x, y, 0)] = 255;
-                        addr[cell(x, y, 1)] = 0;
-                        addr[cell(x, y, 2)] = 0;
-
-                        //printf("pix[0]=%d\n", pix[0]);
-                    }
-                }
-            case 0:
-                break;
-            }
-        }
 
         /*	if(NumPathPlanningCnt<Layer)
 		{				
@@ -1273,9 +906,24 @@ void min_cir(unsigned char *addr)
 		}	
 		*/
     }
+
     //--------规划层数为4时画出满足的RRT分段折线路径-------------------------------
 #if 1
-
+    /*     if ((CurLidarDist > 150) && (CurLidarDist < (618 + 300)))
+    {
+        CurLidarDistPix2 = 17.6132 * pow(0.0099 * ((CurLidarDist - 430)), 0.8712) + 41;
+        //printf("di 1 ge...\n");
+    }
+    if ((CurLidarDist > (618 + 300)) && (CurLidarDist < (995 + 300)))
+    {
+        CurLidarDistPix2 = 9.9210 * pow(0.0918 * ((CurLidarDist - 430)), 0.5322) + 41;
+        //printf("di 2 ge...\n");
+    }
+    if ((CurLidarDist > (995 + 300)) && (CurLidarDist < (2019 + 300)))
+    {
+        CurLidarDistPix2 = 2.7994 * pow(2.4136 * ((CurLidarDist - 430)), 0.4712) + 41;
+        //printf("di 3 ge...\n");
+    } */
     if (Best_OkPath.Best_Ok_Cnt != 0)
     { //防止数据在循环中被清0，使用中间变量来承接rrt的数据，只有当新的数据来临的时候，中间变量才会更新
         Best_OkPath.showBest_Ok_Cnt = 0;
@@ -1307,8 +955,8 @@ void min_cir(unsigned char *addr)
             x = j * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + pix[0] * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800);
 
             addr[cell(x, y, 0)] = 0;
-            addr[cell(x, y, 1)] = 255;
-            addr[cell(x, y, 2)] = 0;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
         }
         for (j = 0; j < pix[0]; j++)
         {
@@ -1325,73 +973,12 @@ void min_cir(unsigned char *addr)
             x = j * cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][3] * 3.14 / 1800) + pix[0] * (cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][2] * 3.14 / 1800) + cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][1] * 3.14 / 1800) + cos(Best_OkPath.showBest_Ok_PerLayer_Ang[i][0] * 3.14 / 1800));
 
             addr[cell(x, y, 0)] = 0;
-            addr[cell(x, y, 1)] = 255;
-            addr[cell(x, y, 2)] = 0;
+            addr[cell(x, y, 1)] = 0;
+            addr[cell(x, y, 2)] = 255;
         }
     }
 #endif
 
-    //--------显示可行路径的边界---------------------------------
-    for (i = 0; i < OkPathCnt; i++)
-    {
-        r = OkPathDistPix[i];
-
-        for (d = -8; d < 8; d++)
-        {
-            if (OkPathAngle[i] < 900)
-            {
-                y = r * sin(OkPathAngle[i] * 3.14 / 1800) + 1 + 5 * cos(OkPathAngle[i] * 3.14 / 1800) + d;
-                x = r * cos(OkPathAngle[i] * 3.14 / 1800) - 5;
-            }
-            if (OkPathAngle[i] > 900)
-            {
-                y = r * sin(OkPathAngle[i] * 3.14 / 1800) + 1 + d;
-                x = r * cos(OkPathAngle[i] * 3.14 / 1800) + 5 * sin(OkPathAngle[i] * 3.14 / 1800);
-            }
-
-            if (!startflag)
-            {
-                addr[cell(x, y, 0)] = 0;
-                addr[cell(x, y, 1)] = 0;
-                addr[cell(x, y, 2)] = 0;
-            }
-        }
-
-        //	printf("OkPathCnt=%d\n",OkPathCnt/2);
-        //	printf("OkPathAngle[%d]=%d\n",i,OkPathAngle[i]);
-        //	printf("OkPathDistPix[%d]=%d\n",i,OkPathDistPix[i]);
-        //	printf("\n");
-    }
-
-    //----------雷达扫到的近似边界点-------------------------------
-
-    //PicEdgePixCnt=AheadCount;
-    //memcpy(PicEdgePix,CurAheadPix,sizeof(CurAheadPix));
-    //memcpy(PicEdgeAngle,CurAheadAngle,sizeof(CurAheadAngle));
-
-    /*	if(AheadCount>1)
-	{
-		//printf("AheadCount=%d\n",AheadCount);	
-		for(i=0;i<AheadCount;i++)
-		{	
-		
-				tmp2=((3600+900-CurAheadAngle[i]) % 3600);
-				printf("tmp2=%d\n",tmp2);
-
-			for(d=-3;d<3;d++)
-			{									
-				r=CurAheadPix[i];
-				y=r*sin(tmp2*3.14 / 1800)+d;
-				x=r*cos(tmp2* 3.14  / 1800);
-				addr[cell(x,y,0)]=255;
-				addr[cell(x,y,1)]=0;
-				addr[cell(x,y,2)]=0;
-			}	
-			//printf("CurAheadAngle=%d\n",CurAheadAngle[i]);
-			//printf("CurAheadPix=%d\n",CurAheadPix[i]);
-		}
-	}
-	*/
     //-------------------------------------------------------------------------
 
     AimCount = 0;
@@ -1584,31 +1171,6 @@ void min_cir(unsigned char *addr)
             addr[cell(x, y, 2)] = 255; */
         }
 
-    //-----------------模拟雷达扫描画面---------------------------------------
-    /*
-	static float scan=0;
-
-	for(angle=0;angle<=6.283+0.005;angle=angle+0.005)
-	{
-		for(r=0;r<275;r=r+1)
-		{
-			y=(r*sin(angle));
-			x=(r*cos(angle));
-			//----------雷达扫描线-------------
-			if(abs(scan*100-angle*100)<3)
-			{
-				addr[cell(x,y,0)]=0;
-				addr[cell(x,y,1)]=0;
-				addr[cell(x,y,2)]=255;
-			}
-		}
-	}	 
-	scan=scan+0.4;
-
-	if(scan>=6.28)
-		scan=0;
-
-*/
     //-------------------------------------------------------------------------
 }
 
@@ -1701,13 +1263,18 @@ int rgb(unsigned char *addr, int y, int x)
             return 3;
         }
         //----------------------------------------------------------------------------
-
-        if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 15 &&
+        //白天
+        /*         if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 15 &&
             addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 20 && addr[cell(x, y, 2)] >= 110) //yellow
         {
             return 4;
+        } */
+        //晚上在实验室用这个
+        if (addr[cell(x, y, 1)] >= addr[cell(x, y, 0)] + 30 &&
+            addr[cell(x, y, 2)] > addr[cell(x, y, 0)] + 30 && addr[cell(x, y, 2)] >= 110) //yellow
+        {
+            return 4;
         }
-
         //----------------------------------------------------------------------------
         if (addr[cell(x, y, 0)] < 90 && addr[cell(x, y, 1)] < 90 && addr[cell(x, y, 2)] < 120) //black
         {
@@ -1719,7 +1286,50 @@ int rgb(unsigned char *addr, int y, int x)
     return 0;
 
 } //========================================================================
+int get_r(int rad)
+{
 
+    if (rad < 20)
+    {
+        return rad / 4 + 5;
+    }
+    if (rad >= 20 && rad < 30)
+    {
+        return rad / 4 + 4;
+    }
+    if (rad >= 30 && rad < 40)
+    {
+        return rad / 4 + 3;
+    }
+    if (rad >= 40 && rad < 50)
+    {
+        return rad / 4 + 2;
+    }
+    if (rad >= 50 && rad < 60)
+    {
+        return rad / 4 + 1;
+    }
+    if (rad >= 60 && rad < 70)
+    {
+        return rad / 4 + 0;
+    }
+    if (rad >= 70 && rad < 80)
+    {
+        return rad / 4 - 1;
+    }
+    if (rad >= 80 && rad < 90)
+    {
+        return rad / 4 - 2;
+    }
+    if (rad >= 90 && rad < 100)
+    {
+        return rad / 4 - 3;
+    }
+    if (rad >= 100)
+    {
+        return rad / 4 - 4;
+    }
+}
 void find_dir(unsigned char *addr)
 {
     int y = 0;

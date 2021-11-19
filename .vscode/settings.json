@@ -8,6 +8,7 @@
         "*.tcc": "c",
         "bitset": "c",
         "chrono": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "matrix.h": "c"
     }
 }

@@ -47,7 +47,8 @@ int addr_len;
 socklen_t len;
 
 //----------------------------usart---------------------------------------
-unsigned char ask_data[5];
+unsigned char ask_data[8];
+unsigned char set_data[8];
 unsigned char get_data[8];
 
 //-------------------------network-------------------------------

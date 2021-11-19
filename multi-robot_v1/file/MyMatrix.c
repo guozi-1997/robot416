@@ -6,6 +6,7 @@
 #include "global.h"
 #include <errno.h>
 #include <sys/time.h>
+#include "matrix.h"
 
 void Init_Matrix(Matrix mat)
 {
@@ -425,29 +426,28 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 		ekf_send[a].angle[k] = src.robot_msg[k].angle;
 	}
 
-	for (i = 1; i < count - 1; i++)
+	for (i = 1; i < count; i++)
 	{
 		//-(double)Ture_Tht / 100
-		for (j = i + 1; j < count; j++)
-		{ //向右转电子罗盘加，向左电子罗盘减
-			robot_rece[a].number = abs((robot_ekf[i].angle / 10 - Ture_Tht / 100) - (ekf_send[a].angle[j] / 10 - src.Ture_Tht / 100));
+		for (j = 1; j < count; j++)
+		{ //陀螺仪向左转是加，向右转陀螺仪减
+			robot_rece[a].number = abs((robot_ekf[i].angle / 10 + Ture_Tht / 1000) - (ekf_send[a].angle[j] / 10 + src.Ture_Tht / 1000));
 			if (robot_rece[a].number >= 360)
 			{
 				robot_rece[a].number = robot_rece[a].number - 360;
 			}
 			//printf("robot_rece[a].number = %d\n", robot_rece[a].number);
 
-			printf("角度=%d 观测角=%d 电子罗盘1=%d 传回角=%d 电子罗盘2=%d \n", robot_rece[a].number, robot_ekf[i].angle / 10, -Ture_Tht / 100, -ekf_send[a].angle[j] / 10, src.Ture_Tht / 100);
+			printf("角度=%d 观测角=%d 陀螺仪=%d 传回角=%d 陀螺仪=%d \n", robot_rece[a].number, robot_ekf[i].angle / 10, Ture_Tht / 1000, -ekf_send[a].angle[j] / 10, -src.Ture_Tht / 1000);
 			if (abs(robot_rece[a].number - 180) <= 20)
 			{
 				printf("距离差=%d 观测距离=%d 传回距离=%d\n", abs(robot_ekf[i].distance - ekf_send[a].distance[j]), robot_ekf[i].distance, ekf_send[a].distance[j]);
 				if (abs(robot_ekf[i].distance - ekf_send[a].distance[j]) <= 40)
 				{
-					//printf("角度=%d 观测角=%d 电子罗盘1=%d 传回角=%d 电子罗盘2=%d \n", robot_rece[a].number, robot_ekf[i].angle / 10, -Ture_Tht / 100, -ekf_send[a].angle[j] / 10, atoi(substr(src, 14, 6)) / 100);
-					//printf("距离差=%d 观测距离=%d 传回距离=%d\n", abs(robot_ekf[i].distance - ekf_send[a].distance[j]), robot_ekf[i].distance, ekf_send[a].distance[j]);
 					printf("success\n");
+					//存放两机器人之间的角度差
 					ekf[a].tht = 180. - (360. - ekf_send[a].angle[j] * 0.1 + robot_ekf[i].angle * 0.1);
-					if (ekf[a].tht > 180)
+					if (ekf[a].tht > 180.)
 					{
 						ekf[a].tht = 360. - ekf[a].tht;
 					}
@@ -468,9 +468,10 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_ekf2[1].dlta_a = src.dlta_a;
 							robot_ekf2[1].Ture_Tht = ekf[a].tht;
 							robot_send[1].angle = src.get_tht;
-							robot_send[1].x = src.get_x;
-							robot_send[1].y = src.get_y;
-							robot_end[1].number = 1;
+							robot_send[1].gyro = src.Ture_Tht;
+							robot_send[1].x = src.get_x; //目标机器人的航位推算x值
+							robot_send[1].y = src.get_y; //目标机器人的航位推算y值
+							robot_end[1].number = 1;	 //标志位
 							break;
 						case 6:
 							robot_ekf2[2].number = atoi(substr(src.local_ip, 12, 1));
@@ -480,6 +481,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_ekf2[2].dlta_a = src.dlta_a;
 							robot_ekf2[2].Ture_Tht = ekf[a].tht;
 							robot_send[2].angle = src.get_tht;
+							robot_send[1].gyro = src.Ture_Tht;
 							robot_send[2].x = src.get_x;
 							robot_send[2].y = src.get_y;
 							robot_end[2].number = 1;
@@ -501,6 +503,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_ekf2[1].dlta_a = src.dlta_a;
 							robot_ekf2[1].Ture_Tht = ekf[a].tht;
 							robot_send[1].angle = src.get_tht;
+							robot_send[1].gyro = src.Ture_Tht;
 							robot_send[1].x = src.get_x;
 							robot_send[1].y = src.get_y;
 							robot_end[1].number = 1;
@@ -513,6 +516,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_ekf2[2].dlta_a = src.dlta_a;
 							robot_ekf2[2].Ture_Tht = ekf[a].tht;
 							robot_send[2].angle = src.get_tht;
+							robot_send[1].gyro = src.Ture_Tht;
 							robot_send[2].x = src.get_x;
 							robot_send[2].y = src.get_y;
 							robot_end[2].number = 1;
@@ -533,6 +537,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_ekf2[1].dlta_a = src.dlta_a;
 							robot_ekf2[1].Ture_Tht = ekf[a].tht;
 							robot_send[1].angle = src.get_tht;
+							robot_send[1].gyro = src.Ture_Tht;
 							robot_send[1].x = src.get_x;
 							robot_send[1].y = src.get_y;
 							robot_end[1].number = 1;
@@ -545,6 +550,7 @@ void assignMent(struct My_msg src, int count, int a, char *local_ip)
 							robot_ekf2[2].dlta_a = src.dlta_a;
 							robot_ekf2[2].Ture_Tht = ekf[a].tht;
 							robot_send[2].angle = src.get_tht;
+							robot_send[1].gyro = src.Ture_Tht;
 							robot_send[2].x = src.get_x;
 							robot_send[2].y = src.get_y;
 							robot_end[2].number = 1;
@@ -590,39 +596,41 @@ void math_Dis_Ang_204(int a)
 	}
 }
 
-void InitEkf(int a)
+void InitEkf(int a, _IN_OUT STACKS *S, ERROR_ID errorID)
 {
 	/*初始化，赋予初值*/
-	ekf[a].A = Create_Matrix(2, 2);
-	ekf[a].H = Create_Matrix(2, 2);
-	ekf[a].X = Create_Matrix(2, 1);
-	ekf[a].X_ = Create_Matrix(2, 1);
-	ekf[a].P = Create_Matrix(2, 2);
-	ekf[a].P_ = Create_Matrix(2, 2);
-	ekf[a].K = Create_Matrix(2, 2);
-	ekf[a].K_ = Create_Matrix(2, 2);
-	ekf[a].K__ = Create_Matrix(2, 2);
-	ekf[a].Z = Create_Matrix(2, 1);
-	ekf[a].Q = Create_Matrix(2, 2);
-	ekf[a].R = Create_Matrix(2, 2);
-	ekf[a].P = eye(2);
-	ekf[a].Avalue[0] = 1;
-	ekf[a].Avalue[1] = 0;
-	ekf[a].Avalue[2] = 0;
-	ekf[a].Avalue[3] = 1;
-	ekf[a].Hvalue[0] = 1;
-	ekf[a].Hvalue[1] = 0;
-	ekf[a].Hvalue[2] = 0;
-	ekf[a].Hvalue[3] = 1;
-	ekf[a].Rvalue[0] = 0.1;
-	ekf[a].Rvalue[3] = 0.1;
+	ekf[a].A = creat_matrix(3, 1, &errorID, &S);
+	ekf[a].H = creat_eye_matrix(3, &errorID, &S);
+	ekf[a].Z = creat_matrix(3, 1, &errorID, &S);
+	ekf[a].X_ = creat_matrix(3, 1, &errorID, &S);
+	ekf[a].X = creat_matrix(3, 1, &errorID, &S);
+	ekf[a].F = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].F_ = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].Q = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].P = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].P_ = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].preZ = creat_matrix(3, 1, &errorID, &S);
+	ekf[a].K = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].K_ = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].R = creat_matrix(3, 3, &errorID, &S);
+	ekf[a].Eye = creat_eye_matrix(3, &errorID, &S);
+	ekf[a].P_value[0] = 0.1;
+	ekf[a].P_value[3] = 0.1;
+	ekf[a].P_value[6] = 0.1;
+	ekf[a].X_value[0] = 0.;
+	ekf[a].X_value[1] = 0.;
+	ekf[a].X_value[2] = 0.;
 	ekf[a].Qvalue[0] = 0.1;
 	ekf[a].Qvalue[3] = 0.1;
-	SetData_Matrix(ekf[a].A, ekf[a].Avalue);
-	SetData_Matrix(ekf[a].H, ekf[a].Hvalue);
-	SetData_Matrix(ekf[a].X, ekf[a].Xvalue);
-	SetData_Matrix(ekf[a].R, ekf[a].Rvalue);
-	SetData_Matrix(ekf[a].Q, ekf[a].Qvalue);
+	ekf[a].Qvalue[6] = 0.1;
+	ekf[a].Rvalue[0] = 0.1;
+	ekf[a].Rvalue[3] = 0.1;
+	ekf[a].Rvalue[6] = 0.1;
+	ekf[a].P_->p = ekf[a].P_value;
+	ekf[a].Q->p = ekf[a].Qvalue;
+	ekf[a].R->p = ekf[a].Rvalue;
+	ekf[a].X_->p = ekf[a].X_value;
+	ekf[a].tht2 = 0.;
 	printf("InitEkf ready\n");
 }
 
